@@ -397,8 +397,11 @@ function upsertInContent(content, name, block){
   return out.replace(/\s+$/,"") + "\n";
 }
 
-/* Minimal template preview renderer — used ONLY to show what the note will look like.
-   The authoritative creation path is Obsidian itself (Periodic Notes), never this. */
+/* Resolve unrendered date tokens in a daily note.
+   Obsidian's native create path (Periodic Notes command via REST) leaves Templater
+   tokens (<% tp.date.now %>) and core {{date:}} tokens literal when Templater's UI
+   hook doesn't fire. This repairs ONLY those deterministic date tokens, so the file
+   matches what Obsidian + Templater would produce interactively. No-op when clean. */
 function renderTemplateForPreview(tpl, dateISO){
   var y=+dateISO.slice(0,4), mo=+dateISO.slice(5,7)-1, d=+dateISO.slice(8,10);
   var dt=new Date(y,mo,d);
@@ -409,6 +412,12 @@ function renderTemplateForPreview(tpl, dateISO){
     })
     .replace(/<% tp\.date\.now\("([^"]+)"\) %>/g, function(_,fmt){ return formatDate(dt,fmt) });
   return out;
+}
+function repairedNote(content, dateISO){
+  if (content==null) return content;
+  if (!/<% tp\./.test(content) && !/\{\{date:/.test(content)) return content;
+  var fixed=renderTemplateForPreview(content, dateISO);
+  return fixed===content ? content : fixed;
 }
 function formatDate(dt,fmt){
   var map={YYYY:dt.getFullYear(), MM:pad(dt.getMonth()+1), DD:pad(dt.getDate()),
@@ -480,7 +489,20 @@ async function vaultRead(s, path){
     if (r.status===404) return null;
     if (!r.ok) throw new Error("read "+r.status);
     return await r.text();
-  }catch(e){ throw new Error("REST unreachable: "+e.message) }
+  }catch(e){
+    if (/certificate|CERT|ssl|SSL/i.test(e.message||"")) throw new CertificateError();
+    throw new Error("REST unreachable: "+e.message);
+  }
+}
+function CertificateError(){ this.name="CertificateError"; this.message="Your browser does not trust the Local REST API certificate yet." }
+
+async function probeCert(s){
+  try{ await restGet(s, ""); return true; }
+  catch(e){
+    if (/certificate|CERT|ssl|SSL/i.test(e.message||"")) throw new CertificateError();
+    if (e instanceof CertificateError) throw e;
+    return false; // offline
+  }
 }
 async function vaultWrite(s, path, body){
   var r=await restPut(s, encodePath(path), body);
@@ -494,7 +516,11 @@ function encodePath(p){ return p.split("/").map(encodeURIComponent).join("/") }
 async function ensureDailyNote(s, dateISO){
   var path=dailyNotePath(dateISO, s.folder);
   var content=await vaultRead(s, path);
-  if (content!==null) return {content:content, created:false};
+  if (content!==null){
+    var fixed=repairedNote(content, dateISO);
+    if (fixed!==content){ try{ await vaultWrite(s, path, fixed); }catch(e){} content=fixed; }
+    return {content:content, created:false};
+  }
   // Missing -> let Obsidian create it via its daily-note command (applies the template).
   var cmd=null;
   try{
@@ -514,7 +540,11 @@ async function ensureDailyNote(s, dateISO){
     catch(e){ /* Obsidian may still have created it; re-check below */ }
   }
   var retry=await vaultRead(s, path);
-  if (retry!==null) return {content:retry, created:true};
+  if (retry!==null){
+    var fixed2=repairedNote(retry, dateISO);
+    if (fixed2!==retry){ try{ await vaultWrite(s, path, fixed2); }catch(e){} retry=fixed2; }
+    return {content:retry, created:true};
+  }
   return {content:null, created:false}; // caller decides fallback messaging
 }
 
@@ -685,7 +715,26 @@ function logRitual(kind){
   setToday("phase",kind);
   (async function(){
     try{
-      var res=await ensureDailyNote(s, iso(new Date()));
+      var s2=settings();
+      if (!s2.token){
+        var el0=$((kind==="rise"?"rise":"sh")+"-status"); el0.className="status err";
+        el0.textContent="REST API token not set. Add it in Settings → REST API token, or copy the block below.";
+        showCopyFallback(kind, block);
+        return;
+      }
+      var okProbe=false, certIssue=false;
+      try{ okProbe=await probeCert(s2); }catch(ce){ certIssue=true; }
+      if (!okProbe){
+        var elC=$((kind==="rise"?"rise":"sh")+"-status"); elC.className="status err";
+        if (certIssue){
+          elC.innerHTML='Rituals can\'t trust the Obsidian Local REST API certificate yet. Open this in a new tab and click through: <a href="'+(s2.restBase||"https://127.0.0.1:27124")+'/" target="_blank" rel="noopener">'+ (s2.restBase||"https://127.0.0.1:27124") +'</a>, then come back and tap Log again.';
+        } else {
+          elC.textContent="Obsidian's Local REST API isn't responding. Make sure Obsidian is running, then tap Log again. Otherwise copy the block below.";
+          showCopyFallback(kind, block);
+        }
+        return;
+      }
+      var res=await ensureDailyNote(s2, iso(new Date()));
       if (res.content===null){
         // Obsidian couldn't create it (e.g. REST absent). Honest fallback.
         $((kind==="rise"?"rise":"sh")+"-status").className="status err";

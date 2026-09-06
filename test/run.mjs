@@ -196,7 +196,7 @@ test("dom: full rise run marks today logged (no REST → copy fallback offered)"
   await page.click("#rise-log");
   await page.waitForFunction(() => {
     const st = document.getElementById("rise-status");
-    return st.textContent && (st.textContent.includes("Couldn't reach Obsidian") || st.textContent.includes("REST failed"));
+    return st && st.classList.contains("err") && document.querySelector("#rise-status button");
   });
   const got = await page.evaluate(() => {
     const d = window.RitualsCore.state()[window.RitualsCore.iso(new Date())] || {};
