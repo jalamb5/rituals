@@ -242,6 +242,24 @@ test("core: defaults carry over Rise/Shutdown phrases", async (page) => {
   assert.equal(d.open, "Here we go.");
   assert.equal(d.close, "All's well.");
 });
+test("dom: log fallback offers an Obsidian deep-link", async (page) => {
+  await open(page, { onboarded: "1", vaultName: "Obsidian", folder: "Daily Notes", restBase: "https://127.0.0.1:27124", token: "" });
+  // no token → log buttons (Open in Obsidian + Copy) appear
+  await page.click('nav.seg button[data-mode="rise"]');
+  await page.click("#rise-begin");
+  await page.click("#rise-carry-next");
+  await page.fill("#rise-head", "noise");
+  await page.click("#rise-head-next");
+  await page.fill("#rise-thing", "The thing");
+  await page.click("#rise-thing-next");
+  await page.fill("#rise-forward", "sun");
+  await page.click("#rise-forward-next");
+  await page.click("#rise-log");
+  await page.waitForSelector("#rise-status .actions button", { state: "visible" });
+  const hasOpen = await page.evaluate(() =>
+    Array.from(document.querySelectorAll("#rise-status button")).some(b => b.textContent.includes("Open in Obsidian")));
+  assert.equal(hasOpen, true);
+});
 
 /* ---------- run ---------- */
 const PORT = 8734;

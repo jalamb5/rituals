@@ -718,8 +718,8 @@ function logRitual(kind){
       var s2=settings();
       if (!s2.token){
         var el0=$((kind==="rise"?"rise":"sh")+"-status"); el0.className="status err";
-        el0.textContent="REST API token not set. Add it in Settings → REST API token, or copy the block below.";
-        showCopyFallback(kind, block);
+        el0.textContent="REST API token not set — but you can still log by opening Obsidian:";
+        showLogButtons(kind, block);
         return;
       }
       var okProbe=false, certIssue=false;
@@ -727,18 +727,19 @@ function logRitual(kind){
       if (!okProbe){
         var elC=$((kind==="rise"?"rise":"sh")+"-status"); elC.className="status err";
         if (certIssue){
-          elC.innerHTML='Rituals can\'t trust the Obsidian Local REST API certificate yet. Open this in a new tab and click through: <a href="'+(s2.restBase||"https://127.0.0.1:27124")+'/" target="_blank" rel="noopener">'+ (s2.restBase||"https://127.0.0.1:27124") +'</a>, then come back and tap Log again.';
+          elC.innerHTML='Rituals can\'t reach the Local REST API directly (certificate). Use the link below, or trust it in Settings. <a href="'+(s2.restBase||"https://127.0.0.1:27124")+'/" target="_blank" rel="noopener">Trust it</a>.';
+          showLogButtons(kind, block);
         } else {
-          elC.textContent="Obsidian's Local REST API isn't responding. Make sure Obsidian is running, then tap Log again. Otherwise copy the block below.";
-          showCopyFallback(kind, block);
+          elC.textContent="Obsidian's Local REST API isn't responding (is Obsidian open?). Use the link below, or copy the block.";
+          showLogButtons(kind, block);
         }
         return;
       }
       var res=await ensureDailyNote(s2, iso(new Date()));
       if (res.content===null){
         $((kind==="rise"?"rise":"sh")+"-status").className="status err";
-        $((kind==="rise"?"rise":"sh")+"-status").textContent="Couldn't reach Obsidian to create today's note. Open Obsidian once (Periodic Notes auto-creates it), then tap Log again. Otherwise: copy below.";
-        showCopyFallback(kind, block);
+        $((kind==="rise"?"rise":"sh")+"-status").textContent="Couldn't reach Obsidian to create today's note. Use the link below instead.";
+        showLogButtons(kind, block);
         return;
       }
       var content=upsertInContent(res.content, kind==="rise"?"Rise":"Shutdown", block);
@@ -750,10 +751,50 @@ function logRitual(kind){
       else { $("sh-carry-hint").textContent = (d.carryover||[]).length? "Carrying "+d.carryover.length+" to tomorrow's Rise: “"+d.carryover.join(" · ")+"”" : ""; shutdownGo(4); }
     }catch(err){
       var el=$((kind==="rise"?"rise":"sh")+"-status"); el.className="status err";
-      el.textContent="REST failed ("+err.message+"). Copy the block and paste it into your daily note, or retry.";
-      showCopyFallback(kind, block);
+      el.textContent="REST failed ("+err.message+"). Use the link below, or copy the block.";
+      showLogButtons(kind, block);
     }
   })();
+}
+/* Offer both a deep-link-to-Obsidian button and the copy fallback. */
+function showLogButtons(kind, block){
+  var el=kind==="rise"?$("rise-status"):$("sh-status");
+  var row=document.createElement("div"); row.className="actions"; row.style.marginTop="8px";
+  var link=document.createElement("button"); link.className="btn primary"; link.textContent="Open in Obsidian";
+  link.onclick=function(){ logViaDeepLink(kind, block); };
+  var cp=document.createElement("button"); cp.className="btn"; cp.textContent="Copy block";
+  cp.onclick=function(){ navigator.clipboard&&navigator.clipboard.writeText(block).then(function(){cp.textContent="Copied ✓"}); };
+  row.appendChild(link); row.appendChild(cp);
+  el.appendChild(row);
+}
+/* Build an Obsidian deep-link URI that appends the block to today's daily note.
+   Works on desktop AND mobile (no REST plugin needed) — the same mechanism the
+   original Rise/Shutdown apps used. Returns null if no vault is set. */
+function deepLinkURI(s, kind, block){
+  if (!s.vaultName) return null;
+  var path = (s.folder||"Daily Notes")+"/"+iso(new Date());
+  return "obsidian://new?vault="+encodeURIComponent(s.vaultName)
+    +"&file="+encodeURIComponent(path)
+    +"&append=true"
+    +"&content="+encodeURIComponent("\n"+block+"\n");
+}
+/* Log via deep link: hand the whole note over to Obsidian to create/append. */
+function logViaDeepLink(kind, block){
+  var s=settings();
+  var uri=deepLinkURI(s, kind, block);
+  var el=$((kind==="rise"?"rise":"sh")+"-status");
+  if (!uri){
+    el.className="status err";
+    el.textContent="Set your Obsidian vault name in Settings to log.";
+    showCopyFallback(kind, block);
+    return;
+  }
+  window.location.href=uri;
+  setToday(kind+"Logged","1"); setToday("phase",null);
+  el.className="status ok";
+  el.textContent="Opened Obsidian to append — confirm there and the note is saved.";
+  if (kind==="rise") riseGo(6);
+  else shutdownGo(4);
 }
 function showCopyFallback(kind, block){
   var el=kind==="rise"?$("rise-status"):$("sh-status");
