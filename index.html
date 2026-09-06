@@ -123,10 +123,13 @@
   .stack label{display:block; color:var(--muted); font-size:13px; margin:10px 0 2px}
   details.set{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:12px 16px; margin-top:14px}
   details.set summary{cursor:pointer; color:var(--muted); font-size:14px}
-  .mood{display:flex; gap:8px; flex-wrap:wrap; margin:6px 0 16px}
-  .mood button{flex:0 0 44px; height:44px; border-radius:10px; border:1px solid var(--line);
+  .mood{display:block; margin:6px 0 16px}
+  .mood-opt{color:var(--dim); font-weight:400; font-size:13px}
+  .mood-btns{display:flex; gap:8px; flex-wrap:wrap; margin:4px 0}
+  .mood-btns button{flex:0 0 44px; height:44px; border-radius:10px; border:1px solid var(--line);
     background:var(--card2); color:var(--text); font-size:16px; cursor:pointer}
-  .mood button.on{border-color:var(--accent); background:var(--accent); color:var(--on-accent)}
+  .mood-btns button.on{border-color:var(--accent); background:var(--accent); color:var(--on-accent)}
+  .mood-hint{color:var(--dim); font-size:12.5px; margin:4px 0 0}
   .carry{display:flex; flex-wrap:wrap; gap:8px; margin:14px 0}
   .pill{display:inline-block; background:var(--card2); border:1px solid var(--line); color:var(--muted);
     border-radius:999px; padding:4px 12px; font-size:13px}
@@ -288,9 +291,13 @@
           </svg>
           <blockquote class="phrase" id="sh-phrase"></blockquote>
         </div>
-        <div class="mood" id="sh-mood" aria-label="How was the day?">
-          <button data-m="1">1</button><button data-m="2">2</button><button data-m="3">3</button>
-          <button data-m="4">4</button><button data-m="5">5</button>
+        <div class="mood">
+          <p class="say" style="margin-bottom:6px">How does the day feel? <span class="mood-opt">— optional</span></p>
+          <div class="mood-btns" id="sh-mood" aria-label="How was the day?">
+            <button data-m="1">1</button><button data-m="2">2</button><button data-m="3">3</button>
+            <button data-m="4">4</button><button data-m="5">5</button>
+          </div>
+          <p class="mood-hint">1 = rough, 5 = great. It's a gentle note to yourself, not a score — it helps you spot trends over time.</p>
         </div>
         <p class="say">When work turns up in your head at nine o'clock, don't chase it down. You said the words, which means it's handled — let that be the whole answer.</p>
         <div class="actions">
