@@ -103,3 +103,13 @@ in an italic Fraunces serif. Default phrases are **"Here we go."** and
 - A weekly pattern view surfacing mood ↔ ritual-adherence trends (Bingo or a
   future Rituals view).
 - Bingo absorption into Rituals once the daily spine has real history.
+
+## Housekeeping status
+
+- **Rise & Shutdown apps retired (2026-09-06):** GitHub repos `jalamb5/rise` and
+  `jalamb5/shutdown` archived; local repos moved to `~/repos/_archived/`. Their
+  moments live on inside Rituals.
+- **Old vault folders `Obsidian/Rise/` and `Obsidian/Shutdown/`** still hold
+  historical ritual notes (pre-Rituals). Gradual retirement once the daily-note
+  spine is trusted — their historical data can stay archived in the vault.
+
