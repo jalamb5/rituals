@@ -104,6 +104,35 @@ in an italic Fraunces serif. Default phrases are **"Here we go."** and
   future Rituals view).
 - Bingo absorption into Rituals once the daily spine has real history.
 
+## Sunday Scaries (rescue element) — evidence base
+
+An on-demand "rescue" moment for the dread-of-the-work-week feeling (peaks
+Sunday evening; can surface any time). Reached via a floating button, guidance
+-first, warm golden-hour theme, optional log. Research gathered 2026-09-06.
+
+**Design shape** (converges from Headspace, Calm, Asana, Lovon, Woebot + the
+science): normalize → name the one specific thing → reality-check it → one
+first-move for Monday (as an if-then) → park the rest → grounding + self-compassion close.
+
+**What the science supports (with confidence):**
+- **Concrete planning > venting (high):** the Sunday/Monday mood dip is one of
+  the most consistent patterns in the affect literature (Larsen & Kasimatis
+  1990; Stone et al. 1985). Rumination worsens mood (Nolen-Hoeksema); concrete
+  planning + implementation intentions counteract it (Gollwitzer 1999, d≈.65).
+  → The "one first-move" step is the core active ingredient.
+- **Normalize, don't pathologize (medium-high):** it's common and transient;
+  validation preempts meta-anxiety. Not a clinical disorder.
+- **Coping-capacity reappraisal (high):** likelihood + "what would you do even
+  in the bad case" (Beck/Clark decatastrophizing) beats bare "it won't happen."
+- **Boundary/detachment (high, if trigger is work spillover):** Sonnentag's work.
+- **Self-compassion + brief mindfulness (medium):** supportive frame, not primary.
+- **Worry scheduling (medium):** "park it for tomorrow" contains lingering worry.
+
+**Deliberately excluded (weakly supported / counterproductive):** "just think
+positive," oversold breathwork-as-cure, forced optimism, venting-alone,
+mood meters/streaks/tracking (Mudo cautionary), clinical exposure, and any
+work-planning sprawl (hand off to Super Productivity instead).
+
 ## Housekeeping status
 
 - **Rise & Shutdown apps retired (2026-09-06):** GitHub repos `jalamb5/rise` and

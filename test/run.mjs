@@ -261,6 +261,42 @@ test("dom: log fallback offers an Obsidian deep-link", async (page) => {
   assert.equal(hasOpen, true);
 });
 
+test("dom: sunday scaries rescue opens, walks, and logs", async (page) => {
+  await open(page, { onboarded: "1", vaultName: "Obsidian", folder: "Daily Notes", restBase: "https://127.0.0.1:27124", token: "" });
+  // rescue button present
+  const btn = await page.$("#rescue-btn");
+  assert.ok(btn, "rescue button exists");
+  await page.click("#rescue-btn");
+  const theme = await page.evaluate(() => document.body.getAttribute("data-theme"));
+  assert.equal(theme, "scaries");
+  const viewOn = await page.evaluate(() => document.getElementById("v-scaries").classList.contains("active"));
+  assert.equal(viewOn, true);
+  // walk through: begin → dread → likely → cope → first → park → phrase
+  await page.click("#scaries-begin");
+  await page.fill("#sc-dread", "the 10am with Dan");
+  await page.click("#sc-dread-next");
+  await page.click('#sc-likely button[data-v="Possible"]');
+  await page.fill("#sc-cope", "I'd prep a few talking points");
+  await page.click("#sc-cope-next");
+  await page.fill("#sc-first", "draft the talking points");
+  await page.click("#sc-first-next");
+  await page.fill("#sc-park", "the rest");
+  await page.click("#sc-park-next");
+  const phraseOn = await page.evaluate(() => {
+    const el = document.getElementById("sc-phrase");
+    const on = Array.from(document.querySelectorAll("#scaries-flow .panel")).filter(p => p.classList.contains("on"));
+    return { phrase: el.textContent, onePanel: on.length === 1 };
+  });
+  assert.equal(phraseOn.onePanel, true);
+  assert.match(phraseOn.phrase, /okay/i);
+  // no token → log fallback buttons appear
+  await page.click("#sc-log");
+  await page.waitForSelector("#sc-status .actions button", { state: "visible" });
+  const hasOpen = await page.evaluate(() =>
+    Array.from(document.querySelectorAll("#sc-status button")).some(b => b.textContent.includes("Open in Obsidian")));
+  assert.equal(hasOpen, true);
+});
+
 /* ---------- run ---------- */
 const PORT = 8734;
 await new Promise(res => server.listen(PORT, "127.0.0.1", res));

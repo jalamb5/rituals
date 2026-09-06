@@ -36,6 +36,12 @@
     --text:#e9ecef; --muted:#aeb6c2; --dim:#6e7683; --accent:#E8A552; --warn:#f3c68a;
     --lamp:#E8A552; --on-accent:#140f06;
   }
+  /* SUNDAY SCARIES = soft golden-hour pause: warm amber, hush before the week */
+  body[data-theme="scaries"]{
+    --glow-bg:#2a2418; --card:rgba(42,36,24,.85); --card2:rgba(58,50,34,.95); --line:rgba(245,190,110,.16);
+    --text:#f3e8d2; --muted:#cfb891; --dim:#a8926b;
+    --accent:#e8a552; --warn:#f3c68a; --lamp:#e8a552; --on-accent:#241a0c;
+  }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
   html,body{margin:0;padding:0}
   body{
@@ -54,6 +60,8 @@
   body[data-theme="rise"] .lamp{ height:170px; background:radial-gradient(circle at 50% 112%, #fdd889 0%, #f5b84a 44%, rgba(245,184,74,0) 72%); }
   body[data-theme="dusk"] .lamp{ background:radial-gradient(120% 130% at 50% 118%, var(--lamp) 0%, rgba(200,120,200,.25) 34%, transparent 66%); }
   body[data-theme="shutdown"] .lamp{ background:radial-gradient(120% 130% at 50% 118%, var(--lamp) 0%, rgba(232,165,82,.30) 34%, transparent 66%); animation:warm 1.6s var(--ease) both; }
+  body[data-theme="scaries"] .lamp{ height:150px; background:radial-gradient(circle at 50% 130%, #e8a552 0%, rgba(232,165,82,.28) 40%, transparent 70%); }
+  body[data-theme="scaries"] .lamp .sun{ bottom:-6px; opacity:.75; transform:scale(.9); box-shadow:0 0 80px 16px rgba(232,165,82,.4); }
   .lamp .sun{
     position:absolute; left:50%; bottom:-26px; width:100px; height:100px; margin-left:-50px; border-radius:50%;
     background:radial-gradient(circle at 50% 50%, #ffe3a1 0%, var(--lamp) 50%, rgba(232,165,82,0) 74%);
@@ -139,6 +147,21 @@
     padding:10px 12px; color:var(--warn); font-size:13.5px; margin:10px 0}
   .stepno{color:var(--dim); font-size:12px; text-transform:uppercase; letter-spacing:1.5px; margin:0 0 2px}
   footer{color:var(--dim); font-size:12px; text-align:center; padding:12px 0 24px}
+  /* rescue element */
+  .rescue{
+    position:fixed; right:14px; bottom:14px; z-index:20;
+    display:flex; align-items:center; gap:8px;
+    background:var(--card2); border:1px solid var(--line); color:var(--text);
+    border-radius:999px; padding:9px 16px; font-size:14px; font-weight:500; cursor:pointer;
+    box-shadow:0 4px 18px rgba(0,0,0,.35); transition:border-color .2s, transform .08s;
+  }
+  .rescue:hover{border-color:var(--accent)}
+  .rescue:active{transform:scale(.98)}
+  .rescue .dot{width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent)}
+  .rate{display:flex; gap:8px; flex-wrap:wrap; margin:6px 0}
+  .rate button{flex:0 0 auto; padding:9px 14px; border-radius:10px; border:1px solid var(--line);
+    background:var(--card2); color:var(--text); font-size:14px; cursor:pointer}
+  .rate button.on{border-color:var(--accent); background:var(--accent); color:var(--on-accent)}
 </style>
 </head>
 <body>
@@ -317,6 +340,100 @@
     </div>
   </section>
 
+  <!-- ======================= SUNDAY SCARIES (rescue) ======================= -->
+  <section class="view" id="v-scaries">
+    <div class="lamp" aria-hidden="true"><div class="sun"></div></div>
+    <div class="horizon" aria-hidden="true"></div>
+    <div class="stage" id="scaries-flow">
+      <!-- 0 normalize -->
+      <section class="panel" data-step="0"><div class="inner">
+        <p class="stepno">Sunday scaries · a quiet moment</p>
+        <p class="q" id="scaries-title">Sunday evening: the 24 hours where a calendar page counts as a threat.</p>
+        <p class="say">Most people feel this — it's one of the most consistent patterns in the mood
+          research. It's common, it's transient, and it crests, then it fades. This isn't a problem
+          to solve; it's a moment to move through. Two minutes, one small step at a time.</p>
+        <div class="actions"><button class="btn primary" id="scaries-begin">Begin</button></div>
+      </div></section>
+      <!-- 1 name the one thing -->
+      <section class="panel" data-step="1"><div class="inner">
+        <p class="stepno">Sunday scaries · 1/4</p>
+        <p class="q">What's actually the one thing you're dreading?</p>
+        <p class="say">Not "Monday" — the specific thing. "The 10am with my manager." "The pile of
+          unread in my inbox." Specificity shrinks a fog into something you can look at.</p>
+        <textarea id="sc-dread" rows="2" placeholder="The one thing…"></textarea>
+        <div class="actions"><button class="btn primary" id="sc-dread-next">Next</button></div>
+      </div></section>
+      <!-- 2 reality-check -->
+      <section class="panel" data-step="2"><div class="inner">
+        <p class="stepno">Sunday scaries · 2/4</p>
+        <p class="q">Reality-check it.</p>
+        <p class="say" id="sc-dread-echo"></p>
+        <p class="say">How likely is the bad version, really? And here's the useful one: even in the
+          realistic bad case — what would you actually do about it?</p>
+        <div class="rate" id="sc-likely">
+          <span class="say" style="margin:0">How likely is it to go badly?</span>
+          <button data-v="Unlikely">Unlikely</button><button data-v="Possible">Possible</button><button data-v="Likely">Likely</button>
+        </div>
+        <textarea id="sc-cope" rows="2" placeholder="What you'd actually do…"></textarea>
+        <div class="actions"><button class="btn ghost" id="sc-likely-back">Back</button>
+          <button class="btn primary" id="sc-cope-next">Next</button></div>
+      </div></section>
+      <!-- 3 one first-move -->
+      <section class="panel" data-step="3"><div class="inner">
+        <p class="stepno">Sunday scaries · 3/4</p>
+        <p class="q">One first-move for Monday.</p>
+        <p class="say">Not a plan — just the first step, phrased as an if-then so it's ready to go:
+          <i>"when I sit down Monday, I'll start with…"</i></p>
+        <textarea id="sc-first" rows="2" placeholder="…the first small step"></textarea>
+        <div class="actions"><button class="btn ghost" id="sc-first-back">Back</button>
+          <button class="btn primary" id="sc-first-next">Next</button></div>
+      </div></section>
+      <!-- 4 park the rest -->
+      <section class="panel" data-step="4"><div class="inner">
+        <p class="stepno">Sunday scaries · 4/4</p>
+        <p class="q">Anything else can wait until tomorrow.</p>
+        <p class="say">Whatever's still looping can be picked up in tomorrow's plan window. You don't
+          need to solve it tonight — writing it down and letting it go is the release.</p>
+        <textarea id="sc-park" rows="3" placeholder="…anything still nagging (optional)"></textarea>
+        <div class="actions"><button class="btn ghost" id="sc-park-back">Back</button>
+          <button class="btn primary" id="sc-park-next">Next</button></div>
+      </div></section>
+      <!-- 5 close -->
+      <section class="panel" data-step="5"><div class="inner">
+        <p class="stepno">Sunday scaries · that's it</p>
+        <div class="phraseRow">
+          <svg class="lantern" viewBox="0 0 40 76" aria-hidden="true" focusable="false">
+            <g fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 2v6"/><path d="M9 15c0-6 5-9 11-9s11 3 11 9"/><path d="M11 15h18l2 5H9z"/>
+              <path d="M12.5 20v33h15V20"/><path d="M9 53h22l-2 5H11z"/><path d="M15 58v4M25 58v4"/>
+              <path d="M13 62h14l2 5H11z"/><path d="M20 67v5"/>
+            </g>
+            <g class="flame">
+              <path d="M20 44c-4 0-6.5-3-6.5-6.5C13.5 33 17 30 20 25c3 5 6.5 8 6.5 12.5C26.5 41 24 44 20 44z" fill="var(--lamp)" opacity=".85"/>
+              <path d="M20 41c-2 0-3.2-1.6-3.2-3.4 0-2.2 1.8-3.8 3.2-6.6 1.4 2.8 3.2 4.4 3.2 6.6C23.2 39.4 22 41 20 41z" fill="var(--bg)" opacity=".55"/>
+            </g>
+          </svg>
+          <blockquote class="phrase" id="sc-phrase"></blockquote>
+        </div>
+        <p class="say">Take a slow breath in… and a longer one out. You've got the rest of tonight —
+          that's yours. The week will be what it is, and you've already got a first move.</p>
+        <div class="actions">
+          <button class="btn primary" id="sc-said">🔊 Said it</button>
+          <button class="btn" id="sc-log">Log to Obsidian</button>
+        </div>
+        <div class="status" id="sc-status"></div>
+      </div></section>
+      <!-- 6 done -->
+      <section class="panel" data-step="6"><div class="inner">
+        <p class="stepno">Sunday scaries</p>
+        <h2 class="title">That's the dread, handled.</h2>
+        <p class="say">You named it, you sized it, and you've got a first move. Whatever's left is
+          parked for tomorrow. Go be present in the rest of your evening.</p>
+        <div class="actions"><button class="btn ghost" id="sc-rerun">Run again</button></div>
+      </div></section>
+    </div>
+  </section>
+
   <!-- ======================= SETTINGS ======================= -->
   <section class="view" id="v-settings">
     <div class="panel on"><div class="inner">
@@ -348,6 +465,9 @@
   </section>
 
   <footer>Rituals — tasks live in Super Productivity, the record lives in Obsidian.</footer>
+  <button class="rescue" id="rescue-btn" title="The Sunday Scaries — pull up a quiet moment">
+    <span class="dot" aria-hidden="true"></span> Sunday scaries
+  </button>
 </main>
 
 <script>
@@ -408,6 +528,19 @@ function blockFor(kind, d){
       "WentRight:: "+oneLine(d.wentRight),
       carry.length? "Carryover:: "+carry.join(", ") : "Carryover::",
       d.mood? "Mood:: "+d.mood : "Mood::",
+      "Phrase:: \""+oneLine(d.phrase||"")+"\"",
+      ""
+    ].join("\n");
+  }
+  if (kind==="scaries"){
+    return [
+      "## Sunday Scaries",
+      "",
+      "Dread:: "+oneLine(d.scDread),
+      "Likely:: "+oneLine(d.scLikely),
+      "Cope:: "+oneLine(d.scCope),
+      "FirstMove:: "+oneLine(d.scFirst),
+      "Parked:: "+oneLine(d.scPark),
       "Phrase:: \""+oneLine(d.phrase||"")+"\"",
       ""
     ].join("\n");
@@ -578,23 +711,24 @@ var $=function(id){return document.getElementById(id)};
 var els={
   daylabel:$("daylabel"), modenav:$("modenav"),
   rise:$("v-rise"), shutdown:$("v-shutdown"),
-  settings:$("v-settings"), onboard:$("v-onboard")
+  settings:$("v-settings"), onboard:$("v-onboard"), scaries:$("v-scaries")
 };
 var cfg=settings();
 var SPEECH_OK=false; try{ SPEECH_OK = "speechSynthesis" in window; }catch(e){}
 
 function show(id){
-  ["v-rise","v-shutdown","v-settings","v-onboard"].forEach(function(v){
+  ["v-rise","v-shutdown","v-settings","v-onboard","v-scaries"].forEach(function(v){
     var el=document.getElementById(v); if(el) el.classList.toggle("active", v===id);
   });
 }
 function themeFor(mode){
   if (mode==="rise") return "rise";
   if (mode==="shutdown") return "shutdown";
+  if (mode==="scaries") return "scaries";
   return "rise";
 }
 function selectView(mode, push){
-  var map={rise:els.rise, shutdown:els.shutdown, settings:els.settings};
+  var map={rise:els.rise, shutdown:els.shutdown, settings:els.settings, scaries:els.scaries};
   if (mode==="onboard"){ show("v-onboard"); return; }
   if (!map[mode]) mode="rise"; // review/off/spgate → the daily front door
   show(map[mode].id);
@@ -704,20 +838,50 @@ Array.prototype.forEach.call(document.querySelectorAll("#sh-mood button"),functi
   b.onclick=function(){ Array.prototype.forEach.call(document.querySelectorAll("#sh-mood button"),function(x){x.classList.remove("on")}); b.classList.add("on"); setToday("mood",+b.dataset.m); };
 });
 
+/* ---- Sunday Scaries (rescue) ---- */
+var scariesGo=walk("scaries-flow");
+var scariesClosing = "It'll be okay.";
+function scariesStart(){
+  setToday("phase","scaries");
+  $("sc-phrase").textContent = scariesClosing;
+  $("sc-dread").value=""; $("sc-cope").value=""; $("sc-first").value=""; $("sc-park").value="";
+  Array.prototype.forEach.call(document.querySelectorAll("#sc-likely button"),function(x){x.classList.remove("on")});
+  scariesGo(0);
+}
+function enterScaries(){ scariesStart(); }
+$("rescue-btn").onclick=function(){ document.body.dataset.pinned="1"; enterScaries(); selectView("scaries",true); };
+$("scaries-begin").onclick=function(){ scariesGo(1); };
+$("sc-dread-next").onclick=function(){ setToday("scDread",$("sc-dread").value); $("sc-dread-echo").textContent="On the dread list: “"+$("sc-dread").value+"”."; scariesGo(2); };
+Array.prototype.forEach.call(document.querySelectorAll("#sc-likely button"),function(b){
+  b.onclick=function(){ Array.prototype.forEach.call(document.querySelectorAll("#sc-likely button"),function(x){x.classList.remove("on")}); b.classList.add("on"); setToday("scLikely",b.dataset.v); };
+});
+$("sc-likely-back").onclick=function(){ scariesGo(1); };
+$("sc-cope-next").onclick=function(){ setToday("scCope",$("sc-cope").value); scariesGo(3); };
+$("sc-first-back").onclick=function(){ scariesGo(2); };
+$("sc-first-next").onclick=function(){ setToday("scFirst",$("sc-first").value); scariesGo(4); };
+$("sc-park-back").onclick=function(){ scariesGo(3); };
+$("sc-park-next").onclick=function(){ setToday("scPark",$("sc-park").value); scariesGo(5); };
+$("sc-said").onclick=function(){ say(scariesClosing); };
+$("sc-rerun").onclick=function(){ scariesStart(); };
+$("sc-log").onclick=function(){ logRitual("scaries"); };
+
 /* ---- Logging (append block into daily note) ---- */
+function statusEl(kind){ return $((kind==="rise"?"rise":(kind==="scaries"?"sc":"sh"))+"-status"); }
 function logRitual(kind){
   var d=todayState(iso(new Date()));
   var s=settings();
   var block = kind==="rise"
     ? blockFor("rise",{head:d.head,oneThing:d.oneThing,lookingForward:d.lookingForward,mood:d.mood,phrase:s.openPhrase})
-    : blockFor("shutdown",{open:d.open,wentRight:d.wentRight,carryover:d.carryover,mood:d.mood,phrase:s.closePhrase});
-  $((kind==="rise"?"rise":"sh")+"-status").textContent="Contacting Obsidian…";
+    : kind==="scaries"
+      ? blockFor("scaries",{scDread:d.scDread,scLikely:d.scLikely,scCope:d.scCope,scFirst:d.scFirst,scPark:d.scPark,phrase:scariesClosing})
+      : blockFor("shutdown",{open:d.open,wentRight:d.wentRight,carryover:d.carryover,mood:d.mood,phrase:s.closePhrase});
+  statusEl(kind).textContent="Contacting Obsidian…";
   setToday("phase",kind);
   (async function(){
     try{
       var s2=settings();
       if (!s2.token){
-        var el0=$((kind==="rise"?"rise":"sh")+"-status"); el0.className="status err";
+        var el0=statusEl(kind); el0.className="status err";
         el0.textContent="REST API token not set — but you can still log by opening Obsidian:";
         showLogButtons(kind, block);
         return;
@@ -725,7 +889,7 @@ function logRitual(kind){
       var okProbe=false, certIssue=false;
       try{ okProbe=await probeCert(s2); }catch(ce){ certIssue=true; }
       if (!okProbe){
-        var elC=$((kind==="rise"?"rise":"sh")+"-status"); elC.className="status err";
+        var elC=statusEl(kind); elC.className="status err";
         if (certIssue){
           elC.innerHTML='Rituals can\'t reach the Local REST API directly (certificate). Use the link below, or trust it in Settings. <a href="'+(s2.restBase||"https://127.0.0.1:27124")+'/" target="_blank" rel="noopener">Trust it</a>.';
           showLogButtons(kind, block);
@@ -737,20 +901,21 @@ function logRitual(kind){
       }
       var res=await ensureDailyNote(s2, iso(new Date()));
       if (res.content===null){
-        $((kind==="rise"?"rise":"sh")+"-status").className="status err";
-        $((kind==="rise"?"rise":"sh")+"-status").textContent="Couldn't reach Obsidian to create today's note. Use the link below instead.";
+        statusEl(kind).className="status err";
+        statusEl(kind).textContent="Couldn't reach Obsidian to create today's note. Use the link below instead.";
         showLogButtons(kind, block);
         return;
       }
-      var content=upsertInContent(res.content, kind==="rise"?"Rise":"Shutdown", block);
+      var content=upsertInContent(res.content, kind==="rise"?"Rise":(kind==="scaries"?"Sunday Scaries":"Shutdown"), block);
       await vaultWrite(s, dailyNotePath(iso(new Date()), s.folder), content);
-      var st=$((kind==="rise"?"rise":"sh")+"-status"); st.className="status ok";
+      var st=statusEl(kind); st.className="status ok";
       st.textContent="Logged to "+(s.folder)+"/"+iso(new Date())+".md (Obsidian Sync will carry it).";
       setToday(kind+"Logged","1"); setToday("phase",null);
       if (kind==="rise") riseGo(6);
+      else if (kind==="scaries") scariesGo(6);
       else { $("sh-carry-hint").textContent = (d.carryover||[]).length? "Carrying "+d.carryover.length+" to tomorrow's Rise: “"+d.carryover.join(" · ")+"”" : ""; shutdownGo(4); }
     }catch(err){
-      var el=$((kind==="rise"?"rise":"sh")+"-status"); el.className="status err";
+      var el=statusEl(kind); el.className="status err";
       el.textContent="REST failed ("+err.message+"). Use the link below, or copy the block.";
       showLogButtons(kind, block);
     }
@@ -758,7 +923,7 @@ function logRitual(kind){
 }
 /* Offer both a deep-link-to-Obsidian button and the copy fallback. */
 function showLogButtons(kind, block){
-  var el=kind==="rise"?$("rise-status"):$("sh-status");
+  var el=statusEl(kind);
   var row=document.createElement("div"); row.className="actions"; row.style.marginTop="8px";
   var link=document.createElement("button"); link.className="btn primary"; link.textContent="Open in Obsidian";
   link.onclick=function(){ logViaDeepLink(kind, block); };
@@ -782,7 +947,7 @@ function deepLinkURI(s, kind, block){
 function logViaDeepLink(kind, block){
   var s=settings();
   var uri=deepLinkURI(s, kind, block);
-  var el=$((kind==="rise"?"rise":"sh")+"-status");
+  var el=statusEl(kind);
   if (!uri){
     el.className="status err";
     el.textContent="Set your Obsidian vault name in Settings to log.";
@@ -794,10 +959,11 @@ function logViaDeepLink(kind, block){
   el.className="status ok";
   el.textContent="Opened Obsidian to append — confirm there and the note is saved.";
   if (kind==="rise") riseGo(6);
+  else if (kind==="scaries") scariesGo(6);
   else shutdownGo(4);
 }
 function showCopyFallback(kind, block){
-  var el=kind==="rise"?$("rise-status"):$("sh-status");
+  var el=statusEl(kind);
   var ta=document.createElement("textarea"); ta.readOnly=true; ta.style.height="120px"; ta.value=block;
   el.appendChild(ta);
   var cp=document.createElement("button"); cp.className="btn"; cp.textContent="Copy block";
