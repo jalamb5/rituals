@@ -208,27 +208,31 @@ test("dom: full rise run marks today logged (no REST → copy fallback offered)"
 
 test("dom: mode-driven daylight/night theme follows the view", async (page) => {
   await open(page, { onboarded: "1", vaultName: "Obsidian", folder: "Daily Notes", restBase: "https://127.0.0.1:27124", token: "" });
-  // rise → dawn
+  // rise → dawn, sun visible
   await page.click('nav.seg button[data-mode="rise"]');
   let theme = await page.evaluate(() => document.body.getAttribute("data-theme"));
   assert.equal(theme, "rise");
-  // shutdown → night
+  let sun = await page.evaluate(() => { const s = document.querySelector(".lamp .sun"); return getComputedStyle(s).display; });
+  assert.notEqual(sun, "none");
+  // shutdown → night, sun gone
   await page.click('nav.seg button[data-mode="shutdown"]');
   theme = await page.evaluate(() => document.body.getAttribute("data-theme"));
   assert.equal(theme, "shutdown");
-  // close-the-loop → dusk
-  await page.click('nav.seg button[data-mode="spgate"]');
-  theme = await page.evaluate(() => document.body.getAttribute("data-theme"));
-  assert.equal(theme, "dusk");
-  // the lamp scene is present and the sun hides at shutdown
-  const lamp = await page.evaluate(() => {
-    const l = document.querySelector(".lamp");
-    const s = document.querySelector(".lamp .sun");
-    return { lamp: !!l, sunHidden: s ? getComputedStyle(s).display === "none" : null, bg: getComputedStyle(document.body).backgroundImage };
+  sun = await page.evaluate(() => { const s = document.querySelector(".lamp .sun"); return getComputedStyle(s).display; });
+  assert.equal(sun, "none");
+  // dusk palette is still defined for the end-of-work cadence
+  const dusk = await page.evaluate(() => { for (const s of document.styleSheets) { for (const r of s.cssRules||[]) { if (r.selectorText && r.selectorText.includes('data-theme="dusk"')) return true; } } return false; });
+  assert.equal(dusk, true);
+});
+
+test("core: defaults carry over Rise/Shutdown phrases", async (page) => {
+  const d = await page.evaluate(() => {
+    const c = window.RitualsCore;
+    localStorage.removeItem("rituals:settings");
+    return { open: c.settings().openPhrase, close: c.settings().closePhrase };
   });
-  assert.equal(lamp.lamp, true);
-  assert.equal(lamp.sunHidden, false);
-  assert.ok(lamp.bg && lamp.bg.includes("gradient") === false || true); // ambient bg present
+  assert.equal(d.open, "Here we go.");
+  assert.equal(d.close, "All's well.");
 });
 
 /* ---------- run ---------- */

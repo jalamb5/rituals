@@ -74,6 +74,9 @@
   h2{margin:0 0 6px; font-size:21px}
   .sub{color:var(--muted); margin:0 0 16px; font-size:14px}
   .phase{color:var(--dim); font-size:12px; text-transform:uppercase; letter-spacing:1.5px; margin-bottom:4px}
+  .phrase{font-family:"Fraunces",Georgia,serif; font-variation-settings:"SOFT" 60,"WONK" 1;
+    font-size:30px; font-style:italic; text-align:center; margin:8px 0 2px; letter-spacing:.2px}
+  .phrase-note{color:var(--muted); font-size:13px; text-align:center; margin:0 0 4px}
   .q{font-size:19px; font-weight:600; margin:14px 0 10px; line-height:1.35}
   textarea,input[type=text],input[type=password]{
     width:100%; background:var(--card2); border:1px solid var(--line); color:var(--text);
@@ -121,9 +124,7 @@
   </div>
   <nav class="seg" id="modenav">
     <button data-mode="rise">Rise</button>
-    <button data-mode="spgate">Close the loop</button>
     <button data-mode="shutdown">Shutdown</button>
-    <button data-mode="review">Weekly review</button>
     <button data-mode="settings">Settings</button>
   </nav>
 </header>
@@ -158,11 +159,8 @@
     <div class="card" id="rise-done">
       <div class="phase">Rise — complete</div>
       <p class="greet" id="rise-done-greet"></p>
-      <p class="meta">Already logged today. You can re-run the ritual or add another note.</p>
-      <div class="row">
-        <button class="btn" id="rise-rerun">Run again</button>
-        <button class="btn ghost" id="rise-goto-shutdown">Close the loop →</button>
-      </div>
+      <p class="meta">Already logged today. You can re-run the ritual.</p>
+      <div class="row"><button class="btn" id="rise-rerun">Run again</button></div>
     </div>
 
     <div class="card" id="rise-flow">
@@ -202,7 +200,8 @@
 
       <div class="step" id="rise-s-phrase">
         <div class="q">Now open it.</div>
-        <p class="center" id="rise-phrase" style="font-size:26px;font-style:italic"></p>
+        <p class="phrase" id="rise-phrase"></p>
+        <p class="phrase-note">Say it, or log it.</p>
         <div class="row center" style="justify-content:center;margin-top:12px">
           <button class="btn" id="rise-said">🔊 Said it</button>
           <button class="btn primary" id="rise-log">Log to Obsidian</button>
@@ -225,16 +224,12 @@
       <p class="greet" id="spgate-greet"></p>
       <p class="meta">Your Rise said your one thing today was:</p>
       <div class="card" id="spgate-thing" style="background:var(--card2);margin:8px 0"></div>
-      <p class="sub">Close the loop in Super Productivity now — review what you did,
-        finish what's left, and set expectations for tomorrow. Rituals never holds tasks;
-        that's Super Productivity's job.</p>
+      <p class="sub">Take a moment in Super Productivity to review what you did, finish
+        what's left, and set expectations for tomorrow — then come back and mark it done.
+        Rituals never holds tasks; that's Super Productivity's job.</p>
       <div class="row">
-        <button class="btn primary" id="spgate-open">Open Super Productivity</button>
-        <button class="btn" id="spgate-copy">Copy one-thing</button>
-      </div>
-      <div class="row" style="margin-top:10px">
-        <button class="btn ghost" id="spgate-no-sp">I keep tasks in Super Productivity</button>
-        <button class="btn ghost" id="spgate-done">Loop closed — done</button>
+        <button class="btn" id="spgate-copy">Copy my one-thing</button>
+        <button class="btn primary" id="spgate-done">Done — I've closed the loop</button>
       </div>
       <div class="status" id="spgate-status"></div>
     </div>
@@ -276,7 +271,8 @@
           <button data-m="1">1</button><button data-m="2">2</button><button data-m="3">3</button>
           <button data-m="4">4</button><button data-m="5">5</button>
         </div>
-        <p class="center" id="sh-phrase" style="font-size:26px;font-style:italic"></p>
+        <p class="phrase" id="sh-phrase"></p>
+        <p class="phrase-note">Say it, or log it.</p>
         <div class="row center" style="justify-content:center">
           <button class="btn" id="sh-said">🔊 Said it</button>
           <button class="btn primary" id="sh-log">Log to Obsidian</button>
@@ -320,9 +316,9 @@
         <label>Local REST API token</label>
         <input type="password" id="set-token">
         <label>Opening phrase (Rise)</label>
-        <input type="text" id="set-openphrase" value="Open the day.">
+        <input type="text" id="set-openphrase" value="Here we go.">
         <label>Closing phrase (Shutdown)</label>
-        <input type="text" id="set-closephrase" value="Close the day properly.">
+        <input type="text" id="set-closephrase" value="All's well.">
         <label>Work-day end — “Close the loop” window starts (24h)</label>
         <input type="text" id="set-spstart" value="16:00">
         <label>Bedtime — Shutdown window starts (24h)</label>
@@ -336,7 +332,7 @@
     </div>
   </section>
 
-  <footer>Rituals · tasks in <a href="#" id="f-sp">Super Productivity</a> · the record in Obsidian · <a href="#" id="f-rise">rise</a> · <a href="#" id="f-sd">shutdown</a></footer>
+  <footer>Rituals — tasks live in Super Productivity, the record lives in Obsidian.</footer>
 </main>
 
 <script>
@@ -487,7 +483,7 @@ var store={
 var DEFAULTS={
   vaultName:"Obsidian", folder:"Daily Notes", restBase:"https://127.0.0.1:27124", token:"",
   riseStart:"05:00", spStart:"16:00", shutdownStart:"20:00",
-  openPhrase:"Open the day.", closePhrase:"Close the day properly.",
+  openPhrase:"Here we go.", closePhrase:"All's well.",
   onboarded:"0"
 };
 function settings(){ var s=Object.assign({},DEFAULTS);
@@ -685,7 +681,6 @@ $("rise-forward-next").onclick=function(){ setToday("lookingForward",$("rise-for
 $("rise-said").onclick=function(){ say(cfg.openPhrase); };
 $("rise-rerun").onclick=function(){ riseStartFlow(); };
 $("rise-log").onclick=function(){ logRitual("rise"); };
-$("rise-goto-shutdown").onclick=function(){ selectView("spgate",true); };
 
 /* ---- Shutdown ---- */
 function enterShutdown(){
@@ -728,18 +723,9 @@ function spgateStart(){
   $("spgate-flow").style.display="block"; $("spgate-done").style.display="none";
   var thing=d.oneThing||"";
   $("spgate-thing").textContent = thing? "“"+thing+"”" : "(no one-thing captured at Rise)";
-  $("spgate-open").disabled = !thing;
   $("spgate-copy").disabled = !thing;
 }
-$("spgate-open").onclick=function(){
-  var d=todayState(iso(new Date()));
-  var url="superproductivity://"; 
-  var ifr=document.createElement("iframe"); ifr.style.display="none"; ifr.src=url;
-  document.body.appendChild(ifr); setTimeout(function(){ document.body.removeChild(ifr); },800);
-  say("Close the loop in Super Productivity.");
-};
 $("spgate-copy").onclick=function(){ var d=todayState(iso(new Date())); if(navigator.clipboard) navigator.clipboard.writeText(d.oneThing); $("spgate-status").textContent="One-thing copied — paste into Super Productivity."; };
-$("spgate-no-sp").onclick=function(){ $("spgate-status").textContent="Okay — keep it wherever tasks live. The record still lands in Obsidian at Shutdown."; };
 $("spgate-done").onclick=function(){ setToday("spClosed","1"); renderSpGate(); };
 $("spgate-redo").onclick=function(){ setToday("spClosed","0"); renderSpGate(); };
 function renderSpGate(){ var c=todayState(iso(new Date())).spClosed==="1";
@@ -832,9 +818,6 @@ Array.prototype.forEach.call(document.querySelectorAll("nav.seg button"),functio
     selectView(m,true);
   };
 });
-document.getElementById("f-rise").onclick=function(e){e.preventDefault();document.body.dataset.pinned="1";selectView("rise",true);};
-document.getElementById("f-sd").onclick=function(e){e.preventDefault();document.body.dataset.pinned="1";selectView("shutdown",true);};
-document.getElementById("f-sp").onclick=function(e){e.preventDefault(); spgateStart(); document.body.dataset.pinned="1"; selectView("spgate",true); };
 
 Array.prototype.forEach.call(document.querySelectorAll("[data-mode-link]"),function(p){
   p.onclick=function(){ document.body.dataset.pinned="1"; selectView(p.dataset.modeLink,true); };
@@ -855,8 +838,8 @@ function persistSettings(){
   s.folder=$("set-folder").value.trim()||"Daily Notes";
   s.restBase=$("set-restbase").value.trim()||"https://127.0.0.1:27124";
   s.token=$("set-token").value.trim();
-  s.openPhrase=$("set-openphrase").value.trim()||"Open the day.";
-  s.closePhrase=$("set-closephrase").value.trim()||"Close the day properly.";
+  s.openPhrase=$("set-openphrase").value.trim()||"Here we go.";
+  s.closePhrase=$("set-closephrase").value.trim()||"All's well.";
   s.spStart=$("set-spstart").value.trim()||"16:00";
   s.shutdownStart=$("set-shutdownstart").value.trim()||"20:00";
   s.onboarded="1"; saveSettings(s);
