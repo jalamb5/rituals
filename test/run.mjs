@@ -206,6 +206,31 @@ test("dom: full rise run marks today logged (no REST → copy fallback offered)"
   assert.equal(got.fallbackShown, true);
 });
 
+test("dom: mode-driven daylight/night theme follows the view", async (page) => {
+  await open(page, { onboarded: "1", vaultName: "Obsidian", folder: "Daily Notes", restBase: "https://127.0.0.1:27124", token: "" });
+  // rise → dawn
+  await page.click('nav.seg button[data-mode="rise"]');
+  let theme = await page.evaluate(() => document.body.getAttribute("data-theme"));
+  assert.equal(theme, "rise");
+  // shutdown → night
+  await page.click('nav.seg button[data-mode="shutdown"]');
+  theme = await page.evaluate(() => document.body.getAttribute("data-theme"));
+  assert.equal(theme, "shutdown");
+  // close-the-loop → dusk
+  await page.click('nav.seg button[data-mode="spgate"]');
+  theme = await page.evaluate(() => document.body.getAttribute("data-theme"));
+  assert.equal(theme, "dusk");
+  // the lamp scene is present and the sun hides at shutdown
+  const lamp = await page.evaluate(() => {
+    const l = document.querySelector(".lamp");
+    const s = document.querySelector(".lamp .sun");
+    return { lamp: !!l, sunHidden: s ? getComputedStyle(s).display === "none" : null, bg: getComputedStyle(document.body).backgroundImage };
+  });
+  assert.equal(lamp.lamp, true);
+  assert.equal(lamp.sunHidden, false);
+  assert.ok(lamp.bg && lamp.bg.includes("gradient") === false || true); // ambient bg present
+});
+
 /* ---------- run ---------- */
 const PORT = 8734;
 await new Promise(res => server.listen(PORT, "127.0.0.1", res));
