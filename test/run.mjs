@@ -173,19 +173,27 @@ test("dom: onboarding begin → nav present; segments switch views", async (page
 test("dom: rise flow is startable from the segment and advances", async (page) => {
   await open(page, { onboarded: "1", vaultName: "Obsidian", folder: "Daily Notes", restBase: "https://127.0.0.1:27124", token: "" });
   await page.click('nav.seg button[data-mode="rise"]');
-  const visible = await page.evaluate(() => {
-    const flow = document.getElementById("rise-flow");
-    const steps = Array.from(document.querySelectorAll("#rise-flow .step")).filter(el => el.style.display !== "none");
-    return { flowOn: flow.style.display === "block", firstVisible: steps.length && steps[0].id };
+  const intro = await page.evaluate(() => {
+    const on = Array.from(document.querySelectorAll("#rise-flow .panel")).filter(p => p.classList.contains("on"));
+    return { count: on.length, hasBegin: !!document.getElementById("rise-begin") };
   });
-  assert.equal(visible.flowOn, true);
-  assert.ok(visible.firstVisible, "a rise step is visible");
+  assert.equal(intro.count, 1);          // exactly one panel at a time
+  assert.equal(intro.hasBegin, true);    // starts at the intro
+  await page.click("#rise-begin");
+  const advanced = await page.evaluate(() => {
+    // after Begin we should have left the intro (intro step-0 panel now off)
+    const introPanel = document.querySelector('#rise-flow .panel[data-step="0"]');
+    const on = Array.from(document.querySelectorAll("#rise-flow .panel")).filter(p => p.classList.contains("on"));
+    return { introOff: !introPanel.classList.contains("on"), count: on.length };
+  });
+  assert.equal(advanced.introOff, true);
+  assert.equal(advanced.count, 1);       // still one panel at a time
 });
 test("dom: full rise run marks today logged (no REST → copy fallback offered)", async (page) => {
   await open(page, { onboarded: "1", vaultName: "Obsidian", folder: "Daily Notes", restBase: "https://127.0.0.1:27124", token: "tok" });
-  // REST is unreachable in the test env → ensureDailyNote throws → copy fallback path
   await page.click('nav.seg button[data-mode="rise"]');
-  // step 1 = carried-in (clean slate) → Continue
+  await page.click("#rise-begin");
+  // step 1 = carry-in (clean slate) → Continue
   await page.click("#rise-carry-next");
   await page.fill("#rise-head", "noise noise");
   await page.click("#rise-head-next");
