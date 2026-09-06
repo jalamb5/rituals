@@ -185,8 +185,9 @@
 
       <div class="step" id="rise-s-thing">
         <div class="q">What is today's one thing?</div>
-        <p class="sub">The one thing that makes today count. You'll close this in Super Productivity later.</p>
-        <textarea id="rise-thing" rows="2" placeholder="…"></textarea>
+        <p class="sub">The one thing that makes today count. If it helps, name <b>when</b> you'll do it
+          — “<i>when I sit down at 9, I'll…</i>”. You'll close it in Super Productivity later.</p>
+        <textarea id="rise-thing" rows="2" placeholder="The one thing that makes today count…"></textarea>
         <div class="row"><button class="btn" id="rise-thing-back">Back</button>
           <button class="btn primary" id="rise-thing-next">Next</button></div>
       </div>
@@ -258,7 +259,8 @@
 
       <div class="step" id="sh-s-right">
         <div class="q">What went right?</div>
-        <p class="sub">One or two real things. Not achievements — moments.</p>
+        <p class="sub">One or two real things — not achievements, moments. Skim it if today was rough;
+          this is a light close, not an obligation.</p>
         <textarea id="sh-right" rows="3" placeholder="…"></textarea>
         <div class="row"><button class="btn" id="sh-right-back">Back</button>
           <button class="btn primary" id="sh-right-next">Next</button></div>
@@ -670,6 +672,8 @@ function riseStartFlow(){
   }
   $("rise-thing").value=d.oneThing||""; $("rise-head").value="";
   $("rise-forward").value=""; setToday("phase","rise"); riseGo(1);
+  // time-to-first-key: drop focus into the first writing point
+  setTimeout(function(){ var t=$("rise-s-head").style.display!=="none"?$("rise-head"):$("rise-thing"); if(t) t.focus(); }, 60);
 }
 function hideCarry(){ if(!$("rise-s-carry").value){} $("rise-s-carry").style.display="none"; $("rise-s-head").style.display="block"; }
 $("rise-carry-next").onclick=hideCarry;
