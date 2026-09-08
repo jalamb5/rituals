@@ -289,6 +289,12 @@ test("dom: sunday scaries rescue opens, walks, and logs", async (page) => {
   });
   assert.equal(phraseOn.onePanel, true);
   assert.match(phraseOn.phrase, /CATS ARE NICE/i);
+  // logged section header should be the rebranded name
+  const header = await page.evaluate(() => {
+    const c = window.RitualsCore;
+    return c.blockFor("scaries", { scDread: "x", scLikely: "Possible", scCope: "", scFirst: "", scPark: "", phrase: "CATS ARE NICE." }).split("\n")[0];
+  });
+  assert.equal(header, "## Don't Panic");
   // no token → log fallback buttons appear
   await page.click("#sc-log");
   await page.waitForSelector("#sc-status .actions button", { state: "visible" });

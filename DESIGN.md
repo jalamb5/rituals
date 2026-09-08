@@ -112,9 +112,11 @@ Sunday-specific. Each spoken phrase carries a small restrained citation line
 
 ## Don't Panic (rescue element) — evidence base
 
-An on-demand "rescue" moment for the dread-of-the-work-week feeling (peaks
-Sunday evening; can surface any time). Reached via a floating button, guidance
--first, warm golden-hour theme, optional log. Research gathered 2026-09-06.
+An on-demand "rescue" moment for anticipatory dread — originally conceived for
+the "Sunday scaries" (peaks Sunday evening), but deliberately broadened to any
+time the feeling hits (a hard morning, a knot in your chest at 3pm). Reached
+via a floating "Don't Panic" button, guidance-first, warm golden-hour theme,
+optional log. Research gathered 2026-09-06.
 
 **Design shape** (converges from Headspace, Calm, Asana, Lovon, Woebot + the
 science): normalize → name the one specific thing → reality-check it → one

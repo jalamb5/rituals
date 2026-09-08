@@ -458,6 +458,8 @@
         <input type="text" id="set-openphrase" value="Fabricati diem.">
         <label>Closing phrase (Shutdown)</label>
         <input type="text" id="set-closephrase" value="All's well.">
+        <label>Rescue phrase (Don't Panic)</label>
+        <input type="text" id="set-scariesphrase" value="CATS ARE NICE.">
         <label>Work-day end — “Close the loop” window starts (24h)</label>
         <input type="text" id="set-spstart" value="16:00">
         <label>Bedtime — Shutdown window starts (24h)</label>
@@ -542,7 +544,7 @@ function blockFor(kind, d){
   }
   if (kind==="scaries"){
     return [
-      "## Sunday Scaries",
+      "## Don't Panic",
       "",
       "Dread:: "+oneLine(d.scDread),
       "Likely:: "+oneLine(d.scLikely),
@@ -626,7 +628,7 @@ var store={
 var DEFAULTS={
   vaultName:"Obsidian", folder:"Daily Notes", restBase:"https://127.0.0.1:27124", token:"",
   riseStart:"05:00", spStart:"16:00", shutdownStart:"20:00",
-  openPhrase:"Fabricati diem.", closePhrase:"All's well.",
+  openPhrase:"Fabricati diem.", closePhrase:"All's well.", scariesPhrase:"CATS ARE NICE.",
   onboarded:"0"
 };
 function settings(){ var s=Object.assign({},DEFAULTS);
@@ -859,11 +861,12 @@ Array.prototype.forEach.call(document.querySelectorAll("#sh-mood button"),functi
   b.onclick=function(){ Array.prototype.forEach.call(document.querySelectorAll("#sh-mood button"),function(x){x.classList.remove("on")}); b.classList.add("on"); setToday("mood",+b.dataset.m); };
 });
 
-/* ---- Sunday Scaries (rescue) ---- */
+/* ---- Don't Panic (rescue) ---- */
 var scariesGo=walk("scaries-flow");
-var scariesClosing = "CATS ARE NICE.";
+var scariesClosing = cfg.scariesPhrase || "CATS ARE NICE.";
 function scariesStart(){
   setToday("phase","scaries");
+  scariesClosing = (cfg.scariesPhrase) || "CATS ARE NICE.";
   $("sc-phrase").textContent = scariesClosing;
   $("sc-dread").value=""; $("sc-cope").value=""; $("sc-first").value=""; $("sc-park").value="";
   Array.prototype.forEach.call(document.querySelectorAll("#sc-likely button"),function(x){x.classList.remove("on")});
@@ -918,7 +921,7 @@ function logRitual(kind){
         showLogButtons(kind, block);
         return;
       }
-      var content=upsertInContent(res.content, kind==="rise"?"Rise":(kind==="scaries"?"Sunday Scaries":"Shutdown"), block);
+      var content=upsertInContent(res.content, kind==="rise"?"Rise":(kind==="scaries"?"Don't Panic":"Shutdown"), block);
       await vaultWrite(s, dailyNotePath(iso(new Date()), s.folder), content);
       var st=statusEl(kind); st.className="status ok";
       st.textContent="Logged to "+(s.folder)+"/"+iso(new Date())+".md (Obsidian Sync will carry it).";
@@ -1016,7 +1019,7 @@ function fillSettingsForm(){
   var s=settings();
   $("set-vault").value=s.vaultName; $("set-folder").value=s.folder;
   $("set-restbase").value=s.restBase; $("set-token").value=s.token;
-  $("set-openphrase").value=s.openPhrase; $("set-closephrase").value=s.closePhrase;
+  $("set-openphrase").value=s.openPhrase; $("set-closephrase").value=s.closePhrase; $("set-scariesphrase").value=s.scariesPhrase;
   $("set-spstart").value=s.spStart; $("set-shutdownstart").value=s.shutdownStart;
   $("on-vault").value=s.vaultName; $("on-folder").value=s.folder;
   $("on-restbase").value=s.restBase; $("on-token").value=s.token;
@@ -1029,6 +1032,7 @@ function persistSettings(){
   s.token=$("set-token").value.trim();
   s.openPhrase=$("set-openphrase").value.trim()||"Fabricati diem.";
   s.closePhrase=$("set-closephrase").value.trim()||"All's well.";
+  s.scariesPhrase=$("set-scariesphrase").value.trim()||"CATS ARE NICE.";
   s.spStart=$("set-spstart").value.trim()||"16:00";
   s.shutdownStart=$("set-shutdownstart").value.trim()||"20:00";
   s.onboarded="1"; saveSettings(s);
