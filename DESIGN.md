@@ -97,7 +97,11 @@ Daylight/night thematic visuals signal the mode: warm dawn glow + rising sun
 in an italic Fraunces serif. Default phrases: **"Fabricati diem."** (Rise — the
 Ankh-Morpork City Watch motto from *Guards! Guards!*, Pratchett's dark-comic
 "seize the day") and **"All's well."** (Shutdown — *Guards! Guards!*). The
-Sunday-scaries rescue button is **"Don't Panic"** (Hitchhiker's Guide).
+rescue button (renamed from "Sunday scaries") is **"Don't Panic"** with a small
+book glyph (Hitchhiker's Guide), and its closing phrase is Death's **"CATS ARE
+NICE."** (*Sourcery*) beside a small cat — the ritual is day-agnostic, not
+Sunday-specific. Each spoken phrase carries a small restrained citation line
+(e.g. "— City Watch motto, *Guards! Guards!*").
 
 ## Open questions / future options (not built yet)
 
@@ -106,7 +110,7 @@ Sunday-scaries rescue button is **"Don't Panic"** (Hitchhiker's Guide).
   future Rituals view).
 - Bingo absorption into Rituals once the daily spine has real history.
 
-## Sunday Scaries (rescue element) — evidence base
+## Don't Panic (rescue element) — evidence base
 
 An on-demand "rescue" moment for the dread-of-the-work-week feeling (peaks
 Sunday evening; can surface any time). Reached via a floating button, guidance

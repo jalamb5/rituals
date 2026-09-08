@@ -119,9 +119,12 @@
   button.btn.ghost{background:transparent}
   button.btn:disabled{opacity:.4; cursor:default}
   /* the spoken phrase + lantern */
-  .phraseRow{display:flex; gap:20px; align-items:flex-start; margin:14px 0 16px}
+  .phraseRow{display:flex; gap:20px; align-items:flex-start; margin:14px 0 6px}
   .phrase{font-family:"Fraunces",Georgia,serif; font-variation-settings:"SOFT" 60,"WONK" 1;
     font-weight:300; font-size:clamp(30px,6.4vw,46px); line-height:1.12; letter-spacing:-.02em; margin:0; padding:0}
+  .cite{color:var(--dim); font-size:12.5px; margin:2px 0 14px; opacity:.8}
+  .cite i{font-style:italic}
+  .cat{width:44px; height:auto; flex:none; margin-top:6px; opacity:.75; color:var(--muted)}
   .lantern{width:40px; height:auto; flex:none; margin-top:4px; opacity:.6; overflow:visible}
   .lantern .flame{transform-origin:20px 40px; animation:flicker 5.5s ease-in-out infinite; filter:drop-shadow(0 0 7px var(--lamp))}
   @keyframes flicker{0%,100%{opacity:.9; transform:scaleY(1)}50%{opacity:1; transform:scaleY(1.06)}}
@@ -157,7 +160,7 @@
   }
   .rescue:hover{border-color:var(--accent)}
   .rescue:active{transform:scale(.98)}
-  .rescue .dot{width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent)}
+  .rescue .guide{width:16px;height:16px;color:var(--accent);flex:none}
   .rate{display:flex; gap:8px; flex-wrap:wrap; margin:6px 0}
   .rate button{flex:0 0 auto; padding:9px 14px; border-radius:10px; border:1px solid var(--line);
     background:var(--card2); color:var(--text); font-size:14px; cursor:pointer}
@@ -250,6 +253,7 @@
       <section class="panel" data-step="5"><div class="inner">
         <p class="stepno">Rise · Now open it.</p>
         <blockquote class="phrase" id="rise-phrase"></blockquote>
+        <p class="cite">— City Watch motto, <i>Guards! Guards!</i></p>
         <p class="say">Give it one minute of quiet before you open anything. The one thing is already named — let it be the first thing you do.</p>
         <div class="actions">
           <button class="btn primary" id="rise-said">🔊 Said it</button>
@@ -314,6 +318,7 @@
           </svg>
           <blockquote class="phrase" id="sh-phrase"></blockquote>
         </div>
+        <p class="cite">— <i>Guards! Guards!</i></p>
         <div class="mood">
           <p class="say" style="margin-bottom:6px">How does the day feel? <span class="mood-opt">— optional</span></p>
           <div class="mood-btns" id="sh-mood" aria-label="How was the day?">
@@ -340,32 +345,34 @@
     </div>
   </section>
 
-  <!-- ======================= SUNDAY SCARIES (rescue) ======================= -->
+  <!-- ======================= DON'T PANIC (rescue) ======================= -->
   <section class="view" id="v-scaries">
     <div class="lamp" aria-hidden="true"><div class="sun"></div></div>
     <div class="horizon" aria-hidden="true"></div>
     <div class="stage" id="scaries-flow">
       <!-- 0 normalize -->
       <section class="panel" data-step="0"><div class="inner">
-        <p class="stepno">Sunday scaries · a quiet moment</p>
-        <p class="q" id="scaries-title">Sunday evening: the 24 hours where a calendar page counts as a threat.</p>
-        <p class="say">Most people feel this — it's one of the most consistent patterns in the mood
-          research. It's common, it's transient, and it crests, then it fades. This isn't a problem
-          to solve; it's a moment to move through. Two minutes, one small step at a time.</p>
+        <p class="stepno">Don't Panic · a quiet moment</p>
+        <p class="q" id="scaries-title">That sinking, something's-coming feeling.</p>
+        <p class="say">Whatever triggered it — the night before work, a hard morning, a knot in your
+          chest at 3pm — it's a well-documented pattern, not a defect in you. It crests, then it
+          fades. This isn't a problem to solve; it's a moment to move through. Two minutes, one
+          small step at a time.</p>
         <div class="actions"><button class="btn primary" id="scaries-begin">Begin</button></div>
       </div></section>
       <!-- 1 name the one thing -->
       <section class="panel" data-step="1"><div class="inner">
-        <p class="stepno">Sunday scaries · 1/4</p>
+        <p class="stepno">Don't Panic · 1/4</p>
         <p class="q">What's actually the one thing you're dreading?</p>
-        <p class="say">Not "Monday" — the specific thing. "The 10am with my manager." "The pile of
-          unread in my inbox." Specificity shrinks a fog into something you can look at.</p>
+        <p class="say">Not the whole fog — the specific thing underneath it. "The 10am with my
+          manager." "That thing I keep putting off." Specificity shrinks a fog into something you
+          can look at.</p>
         <textarea id="sc-dread" rows="2" placeholder="The one thing…"></textarea>
         <div class="actions"><button class="btn primary" id="sc-dread-next">Next</button></div>
       </div></section>
       <!-- 2 reality-check -->
       <section class="panel" data-step="2"><div class="inner">
-        <p class="stepno">Sunday scaries · 2/4</p>
+        <p class="stepno">Don't Panic · 2/4</p>
         <p class="q">Reality-check it.</p>
         <p class="say" id="sc-dread-echo"></p>
         <p class="say">How likely is the bad version, really? And here's the useful one: even in the
@@ -380,43 +387,43 @@
       </div></section>
       <!-- 3 one first-move -->
       <section class="panel" data-step="3"><div class="inner">
-        <p class="stepno">Sunday scaries · 3/4</p>
-        <p class="q">One first-move for Monday.</p>
+        <p class="stepno">Don't Panic · 3/4</p>
+        <p class="q">One first-move for the thing.</p>
         <p class="say">Not a plan — just the first step, phrased as an if-then so it's ready to go:
-          <i>"when I sit down Monday, I'll start with…"</i></p>
+          <i>"when I sit down to it, I'll start with…"</i></p>
         <textarea id="sc-first" rows="2" placeholder="…the first small step"></textarea>
         <div class="actions"><button class="btn ghost" id="sc-first-back">Back</button>
           <button class="btn primary" id="sc-first-next">Next</button></div>
       </div></section>
       <!-- 4 park the rest -->
       <section class="panel" data-step="4"><div class="inner">
-        <p class="stepno">Sunday scaries · 4/4</p>
-        <p class="q">Anything else can wait until tomorrow.</p>
-        <p class="say">Whatever's still looping can be picked up in tomorrow's plan window. You don't
-          need to solve it tonight — writing it down and letting it go is the release.</p>
+        <p class="stepno">Don't Panic · 4/4</p>
+        <p class="q">Anything else can wait.</p>
+        <p class="say">Whatever's still looping can be picked up in a plan window later. You don't
+          need to solve it right now — writing it down and letting it go is the release.</p>
         <textarea id="sc-park" rows="3" placeholder="…anything still nagging (optional)"></textarea>
         <div class="actions"><button class="btn ghost" id="sc-park-back">Back</button>
           <button class="btn primary" id="sc-park-next">Next</button></div>
       </div></section>
       <!-- 5 close -->
       <section class="panel" data-step="5"><div class="inner">
-        <p class="stepno">Sunday scaries · that's it</p>
+        <p class="stepno">Don't Panic · that's it</p>
         <div class="phraseRow">
-          <svg class="lantern" viewBox="0 0 40 76" aria-hidden="true" focusable="false">
-            <g fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M20 2v6"/><path d="M9 15c0-6 5-9 11-9s11 3 11 9"/><path d="M11 15h18l2 5H9z"/>
-              <path d="M12.5 20v33h15V20"/><path d="M9 53h22l-2 5H11z"/><path d="M15 58v4M25 58v4"/>
-              <path d="M13 62h14l2 5H11z"/><path d="M20 67v5"/>
-            </g>
-            <g class="flame">
-              <path d="M20 44c-4 0-6.5-3-6.5-6.5C13.5 33 17 30 20 25c3 5 6.5 8 6.5 12.5C26.5 41 24 44 20 44z" fill="var(--lamp)" opacity=".85"/>
-              <path d="M20 41c-2 0-3.2-1.6-3.2-3.4 0-2.2 1.8-3.8 3.2-6.6 1.4 2.8 3.2 4.4 3.2 6.6C23.2 39.4 22 41 20 41z" fill="var(--bg)" opacity=".55"/>
+          <svg class="cat" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+            <g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 20c-4 1-7 4-8 8-1 5 1 9 5 11 3 2 7 3 11 3h8c4 0 8-1 11-3 4-2 6-6 5-11-1-4-4-7-8-8"/>
+              <path d="M10 26c-2 0-3-1-3-3 0-2 2-3 4-2"/>
+              <path d="M38 26c2 0 3-1 3-3 0-2-2-3-4-2"/>
+              <path d="M16 30c2-1 4-1 8-1s6 0 8 1"/>
+              <path d="M18 35c1.5 1 10.5 1 12 0"/>
+              <path d="M24 27l4-8 5 3M20 22l2-9-6 4"/>
             </g>
           </svg>
           <blockquote class="phrase" id="sc-phrase"></blockquote>
         </div>
-        <p class="say">Take a slow breath in… and a longer one out. You've got the rest of tonight —
-          that's yours. The week will be what it is, and you've already got a first move.</p>
+        <p class="cite">— Death, <i>Sourcery</i></p>
+        <p class="say">Take a slow breath in… and a longer one out. You've got the rest of this
+          moment — it's yours. Whatever's coming, you've already got a first move.</p>
         <div class="actions">
           <button class="btn primary" id="sc-said">🔊 Said it</button>
           <button class="btn" id="sc-log">Log to Obsidian</button>
@@ -425,10 +432,10 @@
       </div></section>
       <!-- 6 done -->
       <section class="panel" data-step="6"><div class="inner">
-        <p class="stepno">Sunday scaries</p>
+        <p class="stepno">Don't Panic</p>
         <h2 class="title">That's the dread, handled.</h2>
         <p class="say">You named it, you sized it, and you've got a first move. Whatever's left is
-          parked for tomorrow. Go be present in the rest of your evening.</p>
+          parked for later. Go be present in what's actually here now.</p>
         <div class="actions"><button class="btn ghost" id="sc-rerun">Run again</button></div>
       </div></section>
     </div>
@@ -466,7 +473,8 @@
 
   <footer>Rituals — tasks live in Super Productivity, the record lives in Obsidian.</footer>
   <button class="rescue" id="rescue-btn" title="Don't Panic — a quiet moment when the dread hits">
-    <span class="dot" aria-hidden="true"></span> Don't Panic
+    <svg class="guide" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5c3-1.5 6-1.5 9 0s6 1.5 9 0v14c-3 1.5-6 1.5-9 0s-6-1.5-9 0z"/><path d="M12 5v14"/></g></svg>
+    <span>Don't Panic</span>
   </button>
 </main>
 
@@ -630,45 +638,58 @@ function setState(k,v){ var s=state(); s[k]=v; store.set("rituals:state",JSON.st
 function todayState(dateISO){ return state()[dateISO]||{} }
 function setToday(part,val){ var s=state(); var k=iso(new Date()); s[k]=s[k]||{}; s[k][part]=val; store.set("rituals:state",JSON.stringify(s)); }
 
-/* -------- Obsidian REST (Tier 1). Loopback https; token auth. -------- */
+/* -------- Obsidian REST (Tier 1). Loopback https with plain-http fallback. --------
+   The plugin serves HTTPS on 27124 (self-signed cert) and, if enabled, plain HTTP
+   on 27123. Browsers hide cert-trust failures from JS as a generic "Failed to fetch",
+   so a machine that hasn't trusted the cert appears "unreachable". To be robust we
+   try the configured (HTTPS) base, and on a transport failure automatically retry
+   over plain HTTP on the same host. If the HTTP server is off that retry fails too
+   and we report the real situation. */
 function restURL(s){ return (s.restBase||"").replace(/\/+$/,"") }
+/* Derive a plain-HTTP fallback base: http:// and swap 27124 -> 27123. */
+function httpFallbackBase(s){
+  var b=restURL(s).replace(/^https:\/\//i,"http://").replace(/:27124/,":27123");
+  return b;
+}
 function restHeaders(s){ var h={"Content-Type":"text/markdown; charset=utf-8"}; if(s.token) h.Authorization="Bearer "+s.token; return h }
-function restGet(s, path){
-  return fetch(restURL(s)+"/vault/"+path, {method:"GET", headers:restHeaders(s), cache:"no-store"});
+/* Try fetch over the given base; on a network/cert failure return null (throws for http errors). */
+async function tryFetch(base, method, path, opts){
+  var init=Object.assign({method:method, headers:restHeaders(cfgRef()), cache:"no-store"}, opts||{});
+  try{ return await fetch(base+path, init); }
+  catch(e){ return null; } // transport/cert failure
 }
-function restPut(s, path, body){
-  return fetch(restURL(s)+"/vault/"+path, {method:"PUT", headers:restHeaders(s), body:body});
+var cfgRef=function(){ return settings(); };
+
+/* Core: try the primary base; on a transport failure retry over plain HTTP. */
+async function withFallback(s, path, method, opts){
+  var primary=restURL(s), alt=httpFallbackBase(s);
+  var r1=await tryFetch(primary, method, path, opts);
+  if (r1) return {res:r1, base:primary};
+  // primary failed at transport -> try plain HTTP
+  var r2=await tryFetch(alt, method, path, opts);
+  if (r2) return {res:r2, base:alt};
+  throw new Error("REST unreachable: could not reach "+primary+" or "+alt);
 }
-function restCommands(s){
-  return fetch(restURL(s)+"/commands/", {method:"GET", headers:restHeaders(s), cache:"no-store"});
-}
-function restExec(s, commandId){
-  return fetch(restURL(s)+"/commands/"+encodeURIComponent(commandId)+"/", {method:"POST", headers:restHeaders(s)});
+async function restFetch(s, method, path, opts){
+  var out=await withFallback(s, path, method, opts);
+  return out.res;
 }
 async function vaultRead(s, path){
-  try{
-    var r=await restGet(s, encodePath(path));
-    if (r.status===404) return null;
-    if (!r.ok) throw new Error("read "+r.status);
-    return await r.text();
-  }catch(e){
-    if (/certificate|CERT|ssl|SSL/i.test(e.message||"")) throw new CertificateError();
-    throw new Error("REST unreachable: "+e.message);
-  }
-}
-function CertificateError(){ this.name="CertificateError"; this.message="Your browser does not trust the Local REST API certificate yet." }
-async function probeCert(s){
-  try{ await restGet(s, ""); return true; }
-  catch(e){
-    if (/certificate|CERT|ssl|SSL/i.test(e.message||"")) throw new CertificateError();
-    if (e instanceof CertificateError) throw e;
-    return false;
-  }
+  var r=await restFetch(s, "GET", "/vault/"+encodePath(path));
+  if (r.status===404) return null;
+  if (!r.ok) throw new Error("read "+r.status);
+  return await r.text();
 }
 async function vaultWrite(s, path, body){
-  var r=await restPut(s, encodePath(path), body);
+  var r=await restFetch(s, "PUT", "/vault/"+encodePath(path), {body:body});
   if (!r.ok) throw new Error("write "+r.status);
   return r.status;
+}
+async function restCommands(s){
+  return await restFetch(s, "GET", "/commands/");
+}
+async function restExec(s, commandId){
+  return await restFetch(s, "POST", "/commands/"+encodeURIComponent(commandId)+"/");
 }
 function encodePath(p){ return p.split("/").map(encodeURIComponent).join("/") }
 
@@ -840,7 +861,7 @@ Array.prototype.forEach.call(document.querySelectorAll("#sh-mood button"),functi
 
 /* ---- Sunday Scaries (rescue) ---- */
 var scariesGo=walk("scaries-flow");
-var scariesClosing = "It'll be okay.";
+var scariesClosing = "CATS ARE NICE.";
 function scariesStart(){
   setToday("phase","scaries");
   $("sc-phrase").textContent = scariesClosing;
@@ -886,19 +907,10 @@ function logRitual(kind){
         showLogButtons(kind, block);
         return;
       }
-      var okProbe=false, certIssue=false;
-      try{ okProbe=await probeCert(s2); }catch(ce){ certIssue=true; }
-      if (!okProbe){
-        var elC=statusEl(kind); elC.className="status err";
-        if (certIssue){
-          elC.innerHTML='Rituals can\'t reach the Local REST API directly (certificate). Use the link below, or trust it in Settings. <a href="'+(s2.restBase||"https://127.0.0.1:27124")+'/" target="_blank" rel="noopener">Trust it</a>.';
-          showLogButtons(kind, block);
-        } else {
-          elC.textContent="Obsidian's Local REST API isn't responding (is Obsidian open?). Use the link below, or copy the block.";
-          showLogButtons(kind, block);
-        }
-        return;
-      }
+      // Note on the REST path: browsers hide self-signed-cert failures as a generic
+      // network error, so we can't reliably tell "cert not trusted" from "Obsidian
+      // closed". The fallback helpers retry over plain HTTP (27123) automatically;
+      // if BOTH are unreachable it's genuinely down and we say so clearly.
       var res=await ensureDailyNote(s2, iso(new Date()));
       if (res.content===null){
         statusEl(kind).className="status err";
@@ -916,7 +928,12 @@ function logRitual(kind){
       else { $("sh-carry-hint").textContent = (d.carryover||[]).length? "Carrying "+d.carryover.length+" to tomorrow's Rise: “"+d.carryover.join(" · ")+"”" : ""; shutdownGo(4); }
     }catch(err){
       var el=statusEl(kind); el.className="status err";
-      el.textContent="REST failed ("+err.message+"). Use the link below, or copy the block.";
+      var reachMsg=/REST unreachable/.test(err.message||"") ;
+      if (reachMsg){
+        el.innerHTML='Couldn\u2019t reach the Local REST API over HTTPS or plain HTTP. Two fixes: (1) enable the plugin\u2019s <b>Enable HTTP server</b> in Obsidian \u2192 Local REST API settings, or (2) trust its certificate once by opening <a href="'+(restURL(settings())||"https://127.0.0.1:27124")+'/" target="_blank" rel="noopener">'+(restURL(settings())||"https://127.0.0.1:27124")+'</a> and clicking through. Then tap Log again — or use the link/copy below.';
+      } else {
+        el.textContent="REST failed ("+err.message+"). Use the link below, or copy the block.";
+      }
       showLogButtons(kind, block);
     }
   })();

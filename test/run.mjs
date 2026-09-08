@@ -288,7 +288,7 @@ test("dom: sunday scaries rescue opens, walks, and logs", async (page) => {
     return { phrase: el.textContent, onePanel: on.length === 1 };
   });
   assert.equal(phraseOn.onePanel, true);
-  assert.match(phraseOn.phrase, /okay/i);
+  assert.match(phraseOn.phrase, /CATS ARE NICE/i);
   // no token → log fallback buttons appear
   await page.click("#sc-log");
   await page.waitForSelector("#sc-status .actions button", { state: "visible" });
