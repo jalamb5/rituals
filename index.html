@@ -448,7 +448,7 @@
         <label>Local REST API token</label>
         <input type="password" id="set-token">
         <label>Opening phrase (Rise)</label>
-        <input type="text" id="set-openphrase" value="Here we go.">
+        <input type="text" id="set-openphrase" value="Fabricati diem.">
         <label>Closing phrase (Shutdown)</label>
         <input type="text" id="set-closephrase" value="All's well.">
         <label>Work-day end — “Close the loop” window starts (24h)</label>
@@ -465,8 +465,8 @@
   </section>
 
   <footer>Rituals — tasks live in Super Productivity, the record lives in Obsidian.</footer>
-  <button class="rescue" id="rescue-btn" title="The Sunday Scaries — pull up a quiet moment">
-    <span class="dot" aria-hidden="true"></span> Sunday scaries
+  <button class="rescue" id="rescue-btn" title="Don't Panic — a quiet moment when the dread hits">
+    <span class="dot" aria-hidden="true"></span> Don't Panic
   </button>
 </main>
 
@@ -618,7 +618,7 @@ var store={
 var DEFAULTS={
   vaultName:"Obsidian", folder:"Daily Notes", restBase:"https://127.0.0.1:27124", token:"",
   riseStart:"05:00", spStart:"16:00", shutdownStart:"20:00",
-  openPhrase:"Here we go.", closePhrase:"All's well.",
+  openPhrase:"Fabricati diem.", closePhrase:"All's well.",
   onboarded:"0"
 };
 function settings(){ var s=Object.assign({},DEFAULTS);
@@ -1010,7 +1010,7 @@ function persistSettings(){
   s.folder=$("set-folder").value.trim()||"Daily Notes";
   s.restBase=$("set-restbase").value.trim()||"https://127.0.0.1:27124";
   s.token=$("set-token").value.trim();
-  s.openPhrase=$("set-openphrase").value.trim()||"Here we go.";
+  s.openPhrase=$("set-openphrase").value.trim()||"Fabricati diem.";
   s.closePhrase=$("set-closephrase").value.trim()||"All's well.";
   s.spStart=$("set-spstart").value.trim()||"16:00";
   s.shutdownStart=$("set-shutdownstart").value.trim()||"20:00";

@@ -16,7 +16,7 @@ No notifications, no accounts, no backend.
 
 ### Rise (morning)
 Guided 4-step arc: carry-in → brain-dump ("what's already in your head") →
-**one thing** → looking forward → spoken phrase ("Here we go.") → log.
+**one thing** → looking forward → spoken phrase ("Fabricati diem.") → log.
 
 **Strongest-supported mechanism is the "one thing" step.** Implementation
 intentions (if-then planning) have the best evidence of anything in the app —
@@ -94,8 +94,10 @@ Down, Cal Newport's shutdown ritual, Keller's ONE Thing. Convergent DNA:
 
 Daylight/night thematic visuals signal the mode: warm dawn glow + rising sun
 (Rise), low warm lamp on near-black (Shutdown), dusk between. Phrase rendered
-in an italic Fraunces serif. Default phrases are **"Here we go."** and
-**"All's well."** (the originals' defaults — not their titles).
+in an italic Fraunces serif. Default phrases: **"Fabricati diem."** (Rise — the
+Ankh-Morpork City Watch motto from *Guards! Guards!*, Pratchett's dark-comic
+"seize the day") and **"All's well."** (Shutdown — *Guards! Guards!*). The
+Sunday-scaries rescue button is **"Don't Panic"** (Hitchhiker's Guide).
 
 ## Open questions / future options (not built yet)
 

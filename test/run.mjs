@@ -239,7 +239,7 @@ test("core: defaults carry over Rise/Shutdown phrases", async (page) => {
     localStorage.removeItem("rituals:settings");
     return { open: c.settings().openPhrase, close: c.settings().closePhrase };
   });
-  assert.equal(d.open, "Here we go.");
+  assert.equal(d.open, "Fabricati diem.");
   assert.equal(d.close, "All's well.");
 });
 test("dom: log fallback offers an Obsidian deep-link", async (page) => {
