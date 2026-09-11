@@ -79,12 +79,13 @@ test("core: modeFor weekday boundaries", async (page) => {
   });
   assert.deepEqual(r, ["rise", "off", "spgate", "shutdown", "shutdown", "spgate"]);
 });
-test("core: modeFor weekend → review in the morning", async (page) => {
+test("core: modeFor weekend → no scheduled ritual (front door), Shutdown at night", async (page) => {
   const r = await page.evaluate(() => {
     const c = window.RitualsCore, S = { riseStart: "05:00", spStart: "16:00", shutdownStart: "20:00" };
     return [c.modeFor(new Date(2026, 8, 6, 9, 0), S), c.modeFor(new Date(2026, 8, 5, 22, 0), S), c.modeFor(new Date(2026, 8, 6, 13, 0), S)];
   });
-  assert.deepEqual(r, ["review", "shutdown", "review"]);
+  // Weekends carry no review concept any more — reviews live in Obsidian (see DESIGN.md).
+  assert.deepEqual(r, ["off", "shutdown", "off"]);
 });
 test("core: dailyNotePath", async (page) => {
   const r = await page.evaluate(() => [window.RitualsCore.dailyNotePath("2026-09-07", "Daily Notes"), window.RitualsCore.dailyNotePath("2026-09-07")]);
@@ -301,97 +302,6 @@ test("dom: sunday scaries rescue opens, walks, and logs", async (page) => {
   const hasOpen = await page.evaluate(() =>
     Array.from(document.querySelectorAll("#sc-status button")).some(b => b.textContent.includes("Open in Obsidian")));
   assert.equal(hasOpen, true);
-});
-
-/* ---------- weekly review ---------- */
-test("review: isoWeekId/weekDates match ISO-8601, weeks run Mon–Sun", async (page) => {
-  const r = await page.evaluate(() => {
-    const C = window.RitualsCore;
-    const cases = { "2026-09-10": "2026-W37", "2026-09-06": "2026-W36", "2026-01-01": "2026-W01",
-                    "2027-01-01": "2026-W53", "2026-12-31": "2026-W53" };
-    const out = { bad: [], monday: [], sunday: [] };
-    for (const [d, want] of Object.entries(cases)) {
-      const got = C.isoWeekId(d);
-      if (got !== want) out.bad.push(d + " -> " + got + " (want " + want + ")");
-    }
-    for (let i = 0; i < 400; i++) {
-      const d = new Date(Date.UTC(2026, 0, 1) + i * 86400000).toISOString().slice(0, 10);
-      const ds = C.weekDates(C.isoWeekId(d));
-      if (!ds || ds.indexOf(d) === -1) out.bad.push("roundtrip " + d);
-      if (new Date(ds[0] + "T00:00:00Z").getUTCDay() !== 1) out.monday.push(d);
-      if (new Date(ds[6] + "T00:00:00Z").getUTCDay() !== 0) out.sunday.push(d);
-    }
-    out.w36 = C.weekDates("2026-W36");
-    return out;
-  });
-  assert.deepEqual(r.bad, []);
-  assert.deepEqual(r.monday, []);
-  assert.deepEqual(r.sunday, []);
-  assert.equal(r.w36[0], "2026-08-31");
-  assert.equal(r.w36[6], "2026-09-06");
-});
-
-test("review: digest pulls Summary::/## Work/## Notes without bleeding ritual blocks", async (page) => {
-  const e = await page.evaluate(() => {
-    const note = [
-      "---", "Title: Thursday", "---", "# Thursday, September 10th 2026",
-      "Summary:: Fire drill build out of all hands deck.",
-      "", "## Work", "", "### 🧭 Today", "Some plan text.", "- [x] a task", "",
-      "## Notes", "", "Some notes here.", "",
-      "## Rise", "", "OneThing:: ship the thing", ""
-    ].join("\n");
-    return window.RitualsCore.parseDigestEntry(note, "2026-09-10");
-  });
-  assert.equal(e.date, "2026-09-10");
-  assert.match(e.summary, /Fire drill build out/);
-  assert.match(e.work, /Some plan text/);
-  assert.match(e.work, /a task/);
-  assert.match(e.notes, /Some notes here/);
-  assert.doesNotMatch(e.notes, /OneThing/);
-});
-
-test("review: template fill substitutes and round-trips through the parser", async (page) => {
-  const r = await page.evaluate(() => {
-    const C = window.RitualsCore;
-    const tpl = "---\nTitle:\n---\n| 🗒️ [[00 Daily Notes Hub|Daily Notes Hub]] |\n\n# <% tp.file.title %>\nSummary::\n\n## What do I want to remember from this week?\n\n\n## Next week:\n\n";
-    const out = C.fillWeeklyTemplate(tpl, "2026-W36", "Hot Week", "A summary.", "- remembered thing", "- next thing");
-    return { out, parsed: C.parseWeeklyReview(out) };
-  });
-  assert.match(r.out, /^---\nTitle: Hot Week\n---/);
-  assert.match(r.out, /^# 2026-W36$/m);
-  assert.match(r.out, /^Summary:: A summary\.$/m);
-  assert.match(r.out, /- remembered thing/);
-  assert.match(r.out, /- next thing/);
-  assert.equal(r.parsed.title, "Hot Week");
-  assert.equal(r.parsed.summary, "A summary.");
-  assert.match(r.parsed.remember, /remembered thing/);
-  assert.match(r.parsed.nextWeek, /next thing/);
-});
-
-test("review: jsonFromText tolerates fences and surrounding prose", async (page) => {
-  const r = await page.evaluate(() => {
-    const C = window.RitualsCore;
-    return [C.jsonFromText('```json\n{"title":"X","summary":"Y"}\n```'),
-            C.jsonFromText('Sure!\n{"title":"A"}\nHope that helps.'),
-            C.jsonFromText("no json here")];
-  });
-  assert.equal(r[0].title, "X");
-  assert.equal(r[1].title, "A");
-  assert.equal(r[2], null);
-});
-
-test("review: nav opens the view and defaults to a real ISO week", async (page) => {
-  const r = await page.evaluate(() => {
-    document.querySelector('nav.seg button[data-mode="review"]').click();
-    return { active: document.getElementById("v-review").classList.contains("active"),
-             week: document.getElementById("rv-week").textContent,
-             build: !!document.getElementById("rv-build"),
-             theme: document.body.getAttribute("data-theme") };
-  });
-  assert.equal(r.active, true);
-  assert.equal(r.build, true);
-  assert.match(r.week, /^\d{4}-W\d{1,2}$/);
-  assert.equal(r.theme, "rise");
 });
 
 /* ---------- run ---------- */

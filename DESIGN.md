@@ -174,43 +174,34 @@ Testing note: the Playwright E2E must load the app from a **local** origin (it d
 pass and hide this. The E2E writes to a scratch `_rituals-e2e/` folder, never the
 real `Daily Notes/` (the vault forbids agent prose in daily notes).
 
-## Weekly review — absorbed from Bingo (decided 2026-09-11)
+## Reviews are not a Rituals concern (decided 2026-09-11)
 
-**Decision: zero-key, local-first, on the personal MacBook.**
+**Supersedes the decision, made earlier the same day, to absorb Bingo into Rituals.**
 
-Bingo (Tauri/Rust) is retired as the review engine. Its logic is ported into
-Rituals as one more view in the same single file — no desktop app, no build step,
-so a change is still "edit index.html, reload".
+Rituals owns *moments and cadence*. A review view was built into the app and then
+deliberately removed: the review was the only thing forcing Rituals to read the vault,
+which dragged in the whole local-origin / PNA constraint, and it had a web app
+re-implementing what Obsidian already does properly.
 
-**Why local-first.** A review has to READ the week's daily notes, and the hosted
-origin cannot reach loopback (Chrome PNA — see the section above). Reading needs a
-*local* origin, which is the same constraint already accepted for writes. So a
-single decision — open Rituals locally on the machine that has the vault — unlocks
-both. No server and no launchd agent is required: verified from a `file://` origin,
-where localStorage works, Obsidian REST returns 200, and a local AI endpoint returns 200.
+What settled it:
 
-**Why zero-key.** The LLM step is optional ("assistant, not author") and points at a
-local OpenAI-compatible endpoint: `hermes proxy`, which rides the Nous Portal OAuth
-credential, so no API key is stored anywhere. Verified live generating a real weekly
-review. Fallback if ever needed: a static Portal key against
-`https://inference-api.nousresearch.com/v1` (CORS is open), which would also work
-from the hosted origin — though the vault read still would not.
+- **Periodic Notes already owns review notes.** `Reviews/Weekly` + `WeeklyTemplate.md`,
+  `Reviews/Monthly` + `MonthlyTemplate.md` and `Reviews/Yearly` + `YearlyTemplate.md` are
+  configured and enabled in the vault. Note, folder, template and cadence already exist —
+  filling those templates by hand from outside duplicates the job.
+- **A page from the public internet cannot reach loopback**, so a Rituals review was only
+  ever usable when opened from a local file: a degraded, discipline-heavy path.
+- **Reviews are vault-native work** — read seven notes, synthesise, write one. Inside
+  Obsidian there is no origin rule, no Local REST API, no token, no port and no cert, and
+  it works on mobile (which the web app can never do).
+- An Obsidian plugin can be **plain JS with no build step**, so this does not reintroduce
+  the Tauri-style build cycle that killed Bingo.
 
-**What the review does** (faithful to Bingo's redesign):
-1. Read the week's daily notes over REST — `Daily Notes/`, then `Daily Notes/Archive/`.
-2. Build a factual digest locally: `Summary::`, `## Work`, `## Notes`. No AI, no key.
-3. Optionally suggest a Title/Summary pair (one model call).
-4. Fill `Templates/WeeklyTemplate.md` line-by-line; save to `Reviews/Weekly/<YYYY-Www>.md`.
-
-Justin writes the reflection ("What do I want to remember" / "Next week") himself.
-
-**Port map:** `config/prompts.rs` → the prompt constant; `review/digest.rs` →
-`parseDigestEntry`; `ai/anthropic.rs::extract_week_context` → `digestLine`;
-`review/generator.rs` → `fillWeeklyTemplate` / `parseWeeklyReview`; `utils/dates.rs`
-→ the ISO-week helpers (checked against ISO-8601 for 3,287 days, Mon–Sun).
-
-**Deferred:** monthly reviews (`monthly_generator.rs` has the shape), editable
-prompts in Settings, richer review editing.
+**Consequences.** Rituals drops the Review view, its review/AI settings, its ISO-week and
+template-fill code, and the weekend `review` mode — weekends now return `off`, which is
+identical behaviour (front door, no auto-start) without the dead concept. Any review tool
+would be an Obsidian plugin in its own repo. **Bingo (Tauri) is retired**; its logic was
+ported once already, and that port is preserved in this repo's git history at `4c14bf0`.
 
 ## Housekeeping status
 
