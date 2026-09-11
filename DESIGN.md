@@ -174,6 +174,44 @@ Testing note: the Playwright E2E must load the app from a **local** origin (it d
 pass and hide this. The E2E writes to a scratch `_rituals-e2e/` folder, never the
 real `Daily Notes/` (the vault forbids agent prose in daily notes).
 
+## Weekly review — absorbed from Bingo (decided 2026-09-11)
+
+**Decision: zero-key, local-first, on the personal MacBook.**
+
+Bingo (Tauri/Rust) is retired as the review engine. Its logic is ported into
+Rituals as one more view in the same single file — no desktop app, no build step,
+so a change is still "edit index.html, reload".
+
+**Why local-first.** A review has to READ the week's daily notes, and the hosted
+origin cannot reach loopback (Chrome PNA — see the section above). Reading needs a
+*local* origin, which is the same constraint already accepted for writes. So a
+single decision — open Rituals locally on the machine that has the vault — unlocks
+both. No server and no launchd agent is required: verified from a `file://` origin,
+where localStorage works, Obsidian REST returns 200, and a local AI endpoint returns 200.
+
+**Why zero-key.** The LLM step is optional ("assistant, not author") and points at a
+local OpenAI-compatible endpoint: `hermes proxy`, which rides the Nous Portal OAuth
+credential, so no API key is stored anywhere. Verified live generating a real weekly
+review. Fallback if ever needed: a static Portal key against
+`https://inference-api.nousresearch.com/v1` (CORS is open), which would also work
+from the hosted origin — though the vault read still would not.
+
+**What the review does** (faithful to Bingo's redesign):
+1. Read the week's daily notes over REST — `Daily Notes/`, then `Daily Notes/Archive/`.
+2. Build a factual digest locally: `Summary::`, `## Work`, `## Notes`. No AI, no key.
+3. Optionally suggest a Title/Summary pair (one model call).
+4. Fill `Templates/WeeklyTemplate.md` line-by-line; save to `Reviews/Weekly/<YYYY-Www>.md`.
+
+Justin writes the reflection ("What do I want to remember" / "Next week") himself.
+
+**Port map:** `config/prompts.rs` → the prompt constant; `review/digest.rs` →
+`parseDigestEntry`; `ai/anthropic.rs::extract_week_context` → `digestLine`;
+`review/generator.rs` → `fillWeeklyTemplate` / `parseWeeklyReview`; `utils/dates.rs`
+→ the ISO-week helpers (checked against ISO-8601 for 3,287 days, Mon–Sun).
+
+**Deferred:** monthly reviews (`monthly_generator.rs` has the shape), editable
+prompts in Settings, richer review editing.
+
 ## Housekeeping status
 
 - **Rise & Shutdown apps retired (2026-09-06):** GitHub repos `jalamb5/rise` and
