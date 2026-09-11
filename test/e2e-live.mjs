@@ -33,7 +33,7 @@ try {
   await page.goto("http://127.0.0.1:8021/index.html", { waitUntil: "domcontentloaded" });
   await page.evaluate((key) => {
     localStorage.setItem("rituals:settings", JSON.stringify({
-      onboarded: "1", vaultName: "Obsidian", folder: "Daily Notes",
+      onboarded: "1", vaultName: "Obsidian", folder: "_rituals-e2e",
       restBase: "https://127.0.0.1:27124", token: key,
       openPhrase: "Open the day.", closePhrase: "Close the day properly.",
       spStart: "16:00", shutdownStart: "20:00"

@@ -930,13 +930,12 @@ function logRitual(kind){
       else if (kind==="scaries") scariesGo(6);
       else { $("sh-carry-hint").textContent = (d.carryover||[]).length? "Carrying "+d.carryover.length+" to tomorrow's Rise: “"+d.carryover.join(" · ")+"”" : ""; shutdownGo(4); }
     }catch(err){
-      var el=statusEl(kind); el.className="status err";
-      var reachMsg=/REST unreachable/.test(err.message||"") ;
-      if (reachMsg){
-        el.innerHTML='Couldn\u2019t reach the Local REST API over HTTPS or plain HTTP. Two fixes: (1) enable the plugin\u2019s <b>Enable HTTP server</b> in Obsidian \u2192 Local REST API settings, or (2) trust its certificate once by opening <a href="'+(restURL(settings())||"https://127.0.0.1:27124")+'/" target="_blank" rel="noopener">'+(restURL(settings())||"https://127.0.0.1:27124")+'</a> and clicking through. Then tap Log again — or use the link/copy below.';
-      } else {
-        el.textContent="REST failed ("+err.message+"). Use the link below, or copy the block.";
-      }
+      // Browsers block a page served from the internet (like the hosted ritual.*)
+      // from reaching Obsidian on your own machine — Chrome's Private Network
+      // Access rule. Nothing local can change that; the deep link always works.
+      // So present it calmly as the normal path, not as an alarming error.
+      var el=statusEl(kind); el.className="status";
+      el.textContent="Open in Obsidian to save this — it writes the note directly.";
       showLogButtons(kind, block);
     }
   })();

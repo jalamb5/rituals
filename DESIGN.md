@@ -141,6 +141,39 @@ positive," oversold breathwork-as-cure, forced optimism, venting-alone,
 mood meters/streaks/tracking (Mudo cautionary), clinical exposure, and any
 work-planning sprawl (hand off to Super Productivity instead).
 
+## Write mechanism & the browser constraint (important)
+
+Rituals logs by appending a block to the Obsidian daily note. Two paths:
+
+1. **REST** (Obsidian Local REST API plugin) — silent, no tap. Writes over
+   `https://127.0.0.1:27124` (self-signed) or plain HTTP `http://127.0.0.1:27123`
+   (needs "Enable HTTP server" in the plugin). The app auto-tries HTTPS then HTTP.
+2. **Deep link** (`obsidian://new?...&append=true`) — Obsidian opens and writes
+   the note itself. One tap. **Always works.**
+
+**Hard constraint found 2026-09-11:** when Rituals is served from the **hosted**
+site (`https://rituals.justinlamb.org`), path 1 **cannot work in Chrome** —
+regardless of settings. Chrome's **Private Network Access** rule blocks a page
+from the public internet reaching the loopback address space
+(`Permission was denied for this request to access the loopback address space`).
+The plugin can't opt in (no `Access-Control-Allow-Private-Network` header; 5.1.0
+is current), and cert trust is a second blocker on top.
+
+**Consequence:** REST writes only work when Rituals is itself opened from a
+**local origin** (a `file://` copy, or `http://localhost`). Verified:
+- local origin → `http://127.0.0.1:27123` = **200 OK**
+- public HTTPS origin → `http://127.0.0.1:27123` = **blocked (PNA)**
+- public HTTPS origin → `https://127.0.0.1:27124` = **blocked (cert)**
+
+So the app treats the deep link as the *normal* path (calm copy, not an error) and
+REST as a silent enhancement for local use. **Do not "fix" this by chasing certs
+or enabling HTTP alone — from the hosted origin neither can work.**
+
+Testing note: the Playwright E2E must load the app from a **local** origin (it does,
+`http://127.0.0.1:8021`) — a test that ignores cert errors would give a false
+pass and hide this. The E2E writes to a scratch `_rituals-e2e/` folder, never the
+real `Daily Notes/` (the vault forbids agent prose in daily notes).
+
 ## Housekeeping status
 
 - **Rise & Shutdown apps retired (2026-09-06):** GitHub repos `jalamb5/rise` and
