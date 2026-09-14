@@ -393,21 +393,56 @@ test("dom: menu view opens from nav with dusk theme and renders specials + secti
   assert.ok(info.items >= 8);
   assert.equal(info.orderBtns, info.specials + info.house + info.items);
 });
-test("dom: order flow → confirm panel → place order → fallback log buttons", async (page) => {
+test("dom: ordering adds to the check without a modal; settle button counts", async (page) => {
   await open(page, { onboarded: "1", vaultName: "Obsidian", folder: "Daily Notes", restBase: "https://127.0.0.1:27124", token: "" });
   await page.click('nav.seg button[data-mode="menu"]');
   await page.click("#menu-sections .m-order");          // first section item
-  const confirm = await page.evaluate(() => {
-    const on = Array.from(document.querySelectorAll("#menu-stage .panel")).filter(p => p.classList.contains("on"));
-    return { onePanel: on.length === 1, named: document.getElementById("menu-order-name").textContent.length > 0 };
-  });
-  assert.equal(confirm.onePanel, true);
-  assert.equal(confirm.named, true);
-  await page.click("#menu-order");                       // no token → fallback buttons
+  const after1 = await page.evaluate(() => ({
+    checkItems: document.querySelectorAll("#menu-check .check-item").length,
+    settle: document.getElementById("menu-settle").textContent,
+    onePanel: Array.from(document.querySelectorAll("#menu-stage .panel")).filter(p => p.classList.contains("on")).length,
+    status: document.getElementById("menu-status").textContent
+  }));
+  assert.equal(after1.checkItems, 1);
+  assert.match(after1.settle, /Settle the check \(1\)/);
+  assert.equal(after1.onePanel, 1, "no modal on order");
+  assert.match(after1.status, /Added the/);
+  await page.click("#menu-house .m-order");              // the house classic
+  const after2 = await page.evaluate(() => ({
+    checkItems: document.querySelectorAll("#menu-check .check-item").length,
+    settle: document.getElementById("menu-settle").textContent,
+    first: document.querySelector("#menu-check .check-item span").textContent
+  }));
+  assert.equal(after2.checkItems, 2);
+  assert.match(after2.settle, /Settle the check \(2\)/);
+  assert.ok(after2.first.length > 0);
+});
+test("dom: settling the check rates items, writes ratings into one Evening block", async (page) => {
+  await open(page, { onboarded: "1", vaultName: "Obsidian", folder: "Daily Notes", restBase: "https://127.0.0.1:27124", token: "" });
+  await page.click('nav.seg button[data-mode="menu"]');
+  await page.click("#menu-sections .m-order");
+  await page.click("#menu-house .m-order");
+  await page.click("#menu-settle");
+  const settle = await page.evaluate(() => ({
+    onePanel: Array.from(document.querySelectorAll("#menu-stage .panel")).filter(p => p.classList.contains("on")).length,
+    items: document.querySelectorAll("#menu-settle-list .settle-item").length
+  }));
+  assert.equal(settle.onePanel, 1);
+  assert.equal(settle.items, 2);
+  await page.click('#menu-settle-list .settle-item:first-child .mood-btns[data-kind="g"] button[data-m="4"]');
+  await page.click("#menu-settle-send");
   await page.waitForSelector("#menu-status-confirm .actions button", { state: "visible" });
-  const hasOpen = await page.evaluate(() =>
-    Array.from(document.querySelectorAll("#menu-status-confirm button")).some(b => b.textContent.includes("Open in Obsidian")));
-  assert.equal(hasOpen, true);
+  const block = await page.evaluate(() => {
+    const c = window.RitualsCore, d = c.state()[c.iso(new Date())];
+    return c.blockFor("evening", { orders: d.eveningOrders });
+  });
+  assert.equal(block.split("\n").filter(l => l.startsWith("Evening::")).length, 2);
+  assert.match(block, /Engage:: 4\/5/);
+  assert.ok(!block.includes("Energy::"), "unrated energy omitted");
+  const settled = await page.evaluate(() => document.getElementById("menu-settle").textContent);
+  assert.match(settled, /Check settled/);
+  const ratings = await page.evaluate(() => window.RitualsCore.menuRatings());
+  assert.ok(ratings["stretch"], "rated dish's engagement fed the learning loop");
 });
 
 test("menu: blockFor evening renders multiple orders in one section", async (page) => {
@@ -423,41 +458,19 @@ test("menu: blockFor evening renders multiple orders in one section", async (pag
   assert.match(b, /Energy:: 2\/5/);
   assert.match(b, /Engage:: 3\/5/);
 });
-test("menu: orders accumulate in state across the evening", async (page) => {
+test("menu: orders accumulate in state across the evening and can be removed", async (page) => {
   const r = await page.evaluate(() => {
     const c = window.RitualsCore;
     c.store.del("rituals:state");
-    c.addEveningOrder("Walk with Henry", 2, 5);
-    c.addEveningOrder("Early Night", 0, 0);
-    const orders = c.state()[c.iso(new Date())].eveningOrders;
+    c.addEveningOrder({ id: "walk-henry", name: "Walk with Henry" });
+    c.addEveningOrder({ id: "early", name: "Early Night" });
+    const k = c.iso(new Date());
+    const orders = c.state()[k].eveningOrders;
     const block = c.blockFor("evening", { orders });
-    return { n: orders.length, stanzas: block.split("\n").filter(l => l.startsWith("Evening::")).length };
+    const after = c.removeEveningOrder(k, 0);
+    return { n: orders.length, stanzas: block.split("\n").filter(l => l.startsWith("Evening::")).length, remaining: after.length };
   });
-  assert.deepEqual([r.n, r.stanzas], [2, 2]);
-});
-test("dom: multiple orders accumulate in 'tonight so far' and the log block", async (page) => {
-  await open(page, { onboarded: "1", vaultName: "Obsidian", folder: "Daily Notes", restBase: "https://127.0.0.1:27124", token: "" });
-  await page.click('nav.seg button[data-mode="menu"]');
-  // first order
-  await page.click("#menu-sections .m-order");
-  await page.click("#menu-order");
-  await page.waitForSelector("#menu-status-confirm .actions button", { state: "visible" });
-  await page.click("#menu-back");
-  let sofar = await page.evaluate(() => document.getElementById("menu-sofar").textContent);
-  assert.match(sofar, /Tonight so far: /);
-  assert.equal(sofar.split("→").length, 1);
-  // second order
-  await page.click("#menu-house .m-order");            // the house classic
-  await page.click("#menu-order");
-  await page.waitForSelector("#menu-status-confirm .actions button", { state: "visible" });
-  await page.click("#menu-back");
-  sofar = await page.evaluate(() => document.getElementById("menu-sofar").textContent);
-  assert.equal(sofar.split("→").length, 2, "second order appended");
-  const block = await page.evaluate(() => {
-    const c = window.RitualsCore, d = c.state()[c.iso(new Date())];
-    return c.blockFor("evening", { orders: d.eveningOrders });
-  });
-  assert.equal(block.split("\n").filter(l => l.startsWith("Evening::")).length, 2);
+  assert.deepEqual([r.n, r.stanzas, r.remaining], [2, 2, 1]);
 });
 
 test("close: parseTasks finds open tasks; toggleTaskByIndex ticks exactly one", async (page) => {

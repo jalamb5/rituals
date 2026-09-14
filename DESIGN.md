@@ -145,11 +145,13 @@ wanted personal time run with work-level **intentionality but not scheduling** �
   `localStorage` (`rituals:menuRatings`); specials weight toward high-engagement
   dishes; a dish averaging <2.5 engagement across ≥2 ratings gets **86'd** off the
   rotation (shown on the board as "86'd today — chef's judgment. It'll be back.").
-- **Ordering = logging:** placing an order appends a stanza to the day's
-  `## Evening` block (idempotent upsert of the whole section; orders accumulate
-  in app state so the block is the evening's arc — a walk, then a chapter, then
-  an early night, all in one section). The evening log and the menu choice are
-  the same tap.
+- **The check model (2026-09-14):** ordering is one tap onto the night's check —
+  no modal, no mid-meal ratings (retrospective ratings are both lower-friction
+  and better data: you judge the arc when it's over, per peak-end findings).
+  Items can be removed (✕). Settling the check rates each item — engagement
+  feeds the learning loop, energy checks the ⚡ price — and writes the whole
+  `## Evening` block to the daily note in a single write. The check is per-day
+  and settles once; ordering again after settling reopens it.
 - **House classic:** Walk with Henry never leaves the menu.
 - The dusk palette (previously defined-but-unused) is the menu's theme.
 

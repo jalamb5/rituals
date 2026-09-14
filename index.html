@@ -186,6 +186,15 @@
   .m-meta{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
   .m-order{margin-left:auto}
   .menu-foot{font-size:13px; font-style:italic; text-align:center; margin-top:18px}
+  /* ---- the check (accumulates orders; settled at the end of the night) ---- */
+  .check-box{background:var(--card2); border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin:14px 0}
+  .check-item{display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--line); font-size:14.5px}
+  .check-item:last-child{border-bottom:0}
+  .check-rm{margin-left:auto; border:0; background:transparent; color:var(--dim); cursor:pointer; font-size:15px; padding:2px 6px}
+  .check-rm:hover{color:var(--warn)}
+  .settle-item{padding:12px 0; border-bottom:1px solid var(--line)}
+  .settle-item:last-child{border-bottom:0}
+  .settle-name{font-weight:600; margin:0 0 4px}
 </style>
 </head>
 <body>
@@ -473,7 +482,6 @@
         <p class="stepno">Dibbler's Eatery</p>
         <h2 class="title" style="font-family:Fraunces,Georgia,serif;font-weight:300">The Evening Menu</h2>
         <p class="say menu-tag">Now serving evenings. All items guaranteed genuine. Prices in energy — check your tank, order accordingly.</p>
-        <p class="say" id="menu-sofar" style="font-size:13.5px;margin-top:4px"></p>
         <div class="specials-board">
           <p class="board-title">★ Today's Specials ★</p>
           <div id="menu-specials-list"></div>
@@ -481,30 +489,24 @@
         </div>
         <div class="house-classic" id="menu-house"></div>
         <div id="menu-sections"></div>
+        <div class="check-box">
+          <p class="board-title">★ Tonight's Check ★</p>
+          <div id="menu-check"></div>
+          <button class="btn primary" id="menu-settle" style="margin-top:10px">Settle the check</button>
+        </div>
         <p class="say menu-foot">Nothing on this menu is compulsory — a la carte, every night. Choosing nothing is a valid order.</p>
         <div class="status" id="menu-status"></div>
       </div></section>
-      <!-- 1 confirm the order -->
+      <!-- 1 settle the check -->
       <section class="panel" data-step="1"><div class="inner">
-        <p class="stepno">Dibbler's Eatery · your order</p>
-        <p class="q" id="menu-order-name"></p>
-        <p class="say" id="menu-order-desc"></p>
-        <div class="mood">
-          <p class="say" style="margin-bottom:6px">How was the meal? <span class="mood-opt">— optional, feeds the menu</span></p>
-          <p class="mood-hint">Energy spent — 1 = coasted, 5 = full tank spent</p>
-          <div class="mood-btns" id="menu-energy" aria-label="Energy spent">
-            <button data-m="1">1</button><button data-m="2">2</button><button data-m="3">3</button>
-            <button data-m="4">4</button><button data-m="5">5</button>
-          </div>
-          <p class="mood-hint">Engagement — 1 = meh, 5 = properly into it</p>
-          <div class="mood-btns" id="menu-engage" aria-label="Engagement">
-            <button data-m="1">1</button><button data-m="2">2</button><button data-m="3">3</button>
-            <button data-m="4">4</button><button data-m="5">5</button>
-          </div>
-        </div>
+        <p class="stepno">Dibbler's Eatery · the check</p>
+        <p class="q">Settle the check.</p>
+        <p class="say">Rate what you had — engagement feeds the menu, energy checks the prices.
+          Skip anything you don't feel like rating; nothing is due.</p>
+        <div id="menu-settle-list"></div>
         <div class="actions">
-          <button class="btn ghost" id="menu-back">Back to menu</button>
-          <button class="btn primary" id="menu-order">Place order</button>
+          <button class="btn ghost" id="menu-settle-back">Back to menu</button>
+          <button class="btn primary" id="menu-settle-send">Send to Obsidian</button>
         </div>
         <div class="status" id="menu-status-confirm"></div>
       </div></section>
@@ -818,13 +820,20 @@ function recordRating(id, energy, engage){
   return r;
 }
 /* Track the evening's orders in app state so the Evening block accumulates
-   across the night (the log is an arc, not a single entry). */
-function addEveningOrder(item, energy, engage){
+   across the night (the check model: orders gather, ratings land at settle). */
+function addEveningOrder(it){
   var s=state(); var k=iso(new Date()); s[k]=s[k]||{};
   s[k].eveningOrders=s[k].eveningOrders||[];
-  s[k].eveningOrders.push({item:item, energy:energy||0, engage:engage||0});
+  s[k].eveningOrders.push({id:it.id, item:it.name, energy:0, engage:0});
   store.set("rituals:state",JSON.stringify(s));
   return s[k].eveningOrders;
+}
+function removeEveningOrder(dateISO, idx){
+  var s=state(); s[dateISO]=s[dateISO]||{};
+  var arr=s[dateISO].eveningOrders=s[dateISO].eveningOrders||[];
+  arr.splice(idx,1);
+  store.set("rituals:state",JSON.stringify(s));
+  return arr;
 }
 /* Close-the-loop task helpers (Obsidian Tasks syntax: "- [ ]" / "- [x]"). */
 function parseTasks(content){
@@ -1149,7 +1158,7 @@ $("sc-log").onclick=function(){ logRitual("scaries"); };
 
 /* ---- Evening Menu (Dibbler's Eatery) ---- */
 var menuGo=walk("menu-stage");
-var currentOrder=null, menuEnergy=0, menuEngage=0;
+var settleRatings={};
 function itemRow(it){
   var row=document.createElement("div"); row.className="m-item";
   var line=document.createElement("div"); line.className="m-line";
@@ -1186,34 +1195,86 @@ function renderMenu(){
   house.appendChild(hh); house.appendChild(itemRow(r.house));
   var secs=$("menu-sections"); secs.innerHTML="";
   r.sections.forEach(function(sec){ secs.appendChild(sectionBlock(sec)); });
-  var tonight=(todayState(iso(new Date())).eveningOrders||[]).map(function(o){return o.item}).filter(Boolean);
-  $("menu-sofar").textContent = tonight.length
-    ? "Tonight so far: "+tonight.join(" → ")
-    : "Tonight's still a blank page — the first order's the one that counts.";
+  renderCheck();
+}
+function renderCheck(){
+  var d=todayState(iso(new Date()));
+  var orders=d.eveningOrders||[];
+  var settled=d.eveningSettled==="1";
+  var box=$("menu-check"); box.innerHTML="";
+  var btn=$("menu-settle");
+  btn.style.opacity="";
+  if (!orders.length){
+    box.innerHTML='<p class="say" style="font-size:13.5px;margin:0">Empty — the first order\'s the one that counts.</p>';
+    btn.disabled=true; btn.textContent="Settle the check";
+    return;
+  }
+  btn.disabled=false;
+  btn.textContent = settled ? "Check settled — logged ✓" : "Settle the check ("+orders.length+")";
+  btn.style.opacity = settled ? ".6" : "";
+  orders.forEach(function(o,i){
+    var row=document.createElement("div"); row.className="check-item";
+    var name=document.createElement("span"); name.textContent=o.item;
+    var rm=document.createElement("button"); rm.className="check-rm"; rm.textContent="✕"; rm.title="Remove from check";
+    rm.onclick=function(){ removeEveningOrder(iso(new Date()), i); renderCheck(); };
+    row.appendChild(name); row.appendChild(rm);
+    box.appendChild(row);
+  });
 }
 function enterMenu(){ renderMenu(); menuGo(0); }
 function orderItem(it){
-  currentOrder=it; menuEnergy=0; menuEngage=0;
-  Array.prototype.forEach.call(document.querySelectorAll("#menu-energy button,#menu-engage button"),function(x){ x.classList.remove("on"); });
-  $("menu-order-name").textContent="Tonight I'll have the "+it.name+".";
-  $("menu-order-desc").textContent=it.desc+" — "+it.cost+"⚡"+(it.cost===0?" (and that's a perfectly good order)":"");
-  var st=$("menu-status"); st.className="status"; st.textContent="";
+  addEveningOrder(it);
+  setToday("eveningSettled","0");
+  renderCheck();
+  var st=$("menu-status"); st.className="status ok";
+  st.textContent="Added the "+it.name+" to tonight's check.";
+}
+function settleOpen(){
+  var orders=todayState(iso(new Date())).eveningOrders||[];
+  settleRatings={};
+  var list=$("menu-settle-list"); list.innerHTML="";
+  orders.forEach(function(o,i){
+    var wrap=document.createElement("div"); wrap.className="settle-item";
+    var name=document.createElement("p"); name.className="settle-name"; name.textContent=o.item;
+    wrap.appendChild(name);
+    [["Engagement — how into it were you","g"],["Energy spent (checks the price)","e"]].forEach(function(rr){
+      var hint=document.createElement("p"); hint.className="mood-hint"; hint.textContent=rr[0];
+      wrap.appendChild(hint);
+      var grp=document.createElement("div"); grp.className="mood-btns"; grp.dataset.idx=i; grp.dataset.kind=rr[1];
+      for (var v=1;v<=5;v++){
+        var b=document.createElement("button"); b.type="button"; b.dataset.m=v; b.textContent=v;
+        grp.appendChild(b);
+      }
+      wrap.appendChild(grp);
+    });
+    list.appendChild(wrap);
+  });
+  $("menu-status-confirm").className="status"; $("menu-status-confirm").textContent="";
   menuGo(1);
 }
-function wireRating(groupId, setter){
-  Array.prototype.forEach.call(document.querySelectorAll("#"+groupId+" button"),function(b){
-    b.onclick=function(){
-      Array.prototype.forEach.call(document.querySelectorAll("#"+groupId+" button"),function(x){ x.classList.remove("on"); });
-      b.classList.add("on"); setter(+b.dataset.m);
-    };
+$("menu-settle-list").onclick=function(ev){
+  var b=ev.target.closest ? ev.target.closest("button") : null;
+  if (!b || !b.dataset.m) return;
+  var grp=b.parentNode, idx=+grp.dataset.idx, kind=grp.dataset.kind, m=+b.dataset.m;
+  Array.prototype.forEach.call(grp.querySelectorAll("button"),function(x){ x.classList.remove("on"); });
+  b.classList.add("on");
+  settleRatings[idx]=settleRatings[idx]||{}; settleRatings[idx][kind]=m;
+};
+$("menu-settle").onclick=function(){ settleOpen(); };
+$("menu-settle-back").onclick=function(){ renderCheck(); menuGo(0); };
+$("menu-settle-send").onclick=function(){
+  var s=state(); var k=iso(new Date());
+  var orders=(s[k]&&s[k].eveningOrders)||[];
+  Object.keys(settleRatings).forEach(function(i){
+    var r=settleRatings[i]; var o=orders[+i]; if (!o) return;
+    if (r.e) o.energy=r.e;
+    if (r.g) o.engage=r.g;
+    if (r.e||r.g) recordRating(o.id, r.e||0, r.g||0);
   });
-}
-wireRating("menu-energy",function(v){ menuEnergy=v; });
-wireRating("menu-engage",function(v){ menuEngage=v; });
-$("menu-back").onclick=function(){ renderMenu(); menuGo(0); };
-$("menu-order").onclick=function(){
-  addEveningOrder(currentOrder.name, menuEnergy, menuEngage);
-  recordRating(currentOrder.id, menuEnergy, menuEngage);
+  if (s[k]) s[k].eveningOrders=orders;
+  store.set("rituals:state",JSON.stringify(s));
+  setToday("eveningSettled","1");
+  renderCheck();
   logRitual("evening");
 };
 $("menu-rerun").onclick=function(){ renderMenu(); menuGo(0); };
@@ -1340,7 +1401,7 @@ function logRitual(kind){
       if (kind==="rise") riseGo(6);
       else if (kind==="scaries") scariesGo(6);
       else if (kind==="close") closeGo(2);
-      else if (kind==="evening"){ $("menu-done-say").textContent="The "+(currentOrder?currentOrder.name:"order")+" is placed and logged — bon appétit."; menuGo(2); }
+      else if (kind==="evening"){ $("menu-done-say").textContent="Check settled and logged — bon appétit."; menuGo(2); }
       else { $("sh-carry-hint").textContent = (d.carryover||[]).length? "Carrying "+d.carryover.length+" to tomorrow's Rise: “"+d.carryover.join(" · ")+"”" : ""; shutdownGo(4); }
     }catch(err){
       // Browsers block a page served from the internet (like the hosted ritual.*)
@@ -1393,7 +1454,7 @@ function logViaDeepLink(kind, block){
   if (kind==="rise") riseGo(6);
   else if (kind==="scaries") scariesGo(6);
   else if (kind==="close") closeGo(2);
-  else if (kind==="evening"){ $("menu-done-say").textContent="Opened Obsidian to append your order — confirm there and it's saved."; menuGo(2); }
+  else if (kind==="evening"){ $("menu-done-say").textContent="Opened Obsidian to append your check — confirm there and it's saved."; menuGo(2); }
   else shutdownGo(4);
 }
 function showCopyFallback(kind, block){
@@ -1483,7 +1544,7 @@ document.addEventListener("DOMContentLoaded", boot);
 window.RitualsCore={modeFor:modeFor,dailyNotePath:dailyNotePath,blockFor:blockFor,
   upsertInContent:upsertInContent,renderTemplateForPreview:renderTemplateForPreview,
   parseOpenLoops:parseOpenLoops,iso:iso,minutes:minutes,settings:settings,store:store,
-  MENU:MENU,menuFor:menuFor,hashInt:hashInt,menuRatings:menuRatings,recordRating:recordRating,addEveningOrder:addEveningOrder,
+  MENU:MENU,menuFor:menuFor,hashInt:hashInt,menuRatings:menuRatings,recordRating:recordRating,addEveningOrder:addEveningOrder,removeEveningOrder:removeEveningOrder,
   PHRASES:PHRASES,
   parseTasks:parseTasks,toggleTaskByIndex:toggleTaskByIndex,openNoteURI:openNoteURI,enterClose:enterClose,
   ensureDailyNote:ensureDailyNote,vaultRead:vaultRead,vaultWrite:vaultWrite,state:state};
