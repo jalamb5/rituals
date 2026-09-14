@@ -138,10 +138,11 @@ wanted personal time run with work-level **intentionality but not scheduling** �
   `localStorage` (`rituals:menuRatings`); specials weight toward high-engagement
   dishes; a dish averaging <2.5 engagement across ≥2 ratings gets **86'd** off the
   rotation (shown on the board as "86'd today — chef's judgment. It'll be back.").
-- **Ordering = logging:** placing an order writes an `## Evening` block to the
-  daily note via the same REST / deep-link pipeline as Rise & Shutdown
-  (idempotent upsert; same-day reorder replaces). The evening log and the menu
-  choice are the same tap.
+- **Ordering = logging:** placing an order appends a stanza to the day's
+  `## Evening` block (idempotent upsert of the whole section; orders accumulate
+  in app state so the block is the evening's arc — a walk, then a chapter, then
+  an early night, all in one section). The evening log and the menu choice are
+  the same tap.
 - **House classic:** Walk with Henry never leaves the menu.
 - The dusk palette (previously defined-but-unused) is the menu's theme.
 

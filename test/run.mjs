@@ -392,6 +392,56 @@ test("dom: order flow → confirm panel → place order → fallback log buttons
   assert.equal(hasOpen, true);
 });
 
+test("menu: blockFor evening renders multiple orders in one section", async (page) => {
+  const b = await page.evaluate(() => window.RitualsCore.blockFor("evening", { orders: [
+    { item: "Walk with Henry", energy: 2, engage: 5 },
+    { item: "Reading, Properly", energy: 0, engage: 3 }
+  ]}));
+  const lines = b.split("\n");
+  assert.equal(lines[0], "## Evening");
+  assert.equal(lines.filter(l => l.startsWith("Evening::")).length, 2);
+  assert.equal(lines.filter(l => l === "## " || l === "##").length, 0, "no nested headings");
+  assert.ok(b.indexOf("Evening:: Walk with Henry") < b.indexOf("Evening:: Reading, Properly"));
+  assert.match(b, /Energy:: 2\/5/);
+  assert.match(b, /Engage:: 3\/5/);
+});
+test("menu: orders accumulate in state across the evening", async (page) => {
+  const r = await page.evaluate(() => {
+    const c = window.RitualsCore;
+    c.store.del("rituals:state");
+    c.addEveningOrder("Walk with Henry", 2, 5);
+    c.addEveningOrder("Early Night", 0, 0);
+    const orders = c.state()[c.iso(new Date())].eveningOrders;
+    const block = c.blockFor("evening", { orders });
+    return { n: orders.length, stanzas: block.split("\n").filter(l => l.startsWith("Evening::")).length };
+  });
+  assert.deepEqual([r.n, r.stanzas], [2, 2]);
+});
+test("dom: multiple orders accumulate in 'tonight so far' and the log block", async (page) => {
+  await open(page, { onboarded: "1", vaultName: "Obsidian", folder: "Daily Notes", restBase: "https://127.0.0.1:27124", token: "" });
+  await page.click('nav.seg button[data-mode="menu"]');
+  // first order
+  await page.click("#menu-sections .m-order");
+  await page.click("#menu-order");
+  await page.waitForSelector("#menu-status-confirm .actions button", { state: "visible" });
+  await page.click("#menu-back");
+  let sofar = await page.evaluate(() => document.getElementById("menu-sofar").textContent);
+  assert.match(sofar, /Tonight so far: /);
+  assert.equal(sofar.split("→").length, 1);
+  // second order
+  await page.click("#menu-house .m-order");            // the house classic
+  await page.click("#menu-order");
+  await page.waitForSelector("#menu-status-confirm .actions button", { state: "visible" });
+  await page.click("#menu-back");
+  sofar = await page.evaluate(() => document.getElementById("menu-sofar").textContent);
+  assert.equal(sofar.split("→").length, 2, "second order appended");
+  const block = await page.evaluate(() => {
+    const c = window.RitualsCore, d = c.state()[c.iso(new Date())];
+    return c.blockFor("evening", { orders: d.eveningOrders });
+  });
+  assert.equal(block.split("\n").filter(l => l.startsWith("Evening::")).length, 2);
+});
+
 /* ---------- run ---------- */
 const PORT = 8734;
 await new Promise(res => server.listen(PORT, "127.0.0.1", res));

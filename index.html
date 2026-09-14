@@ -473,6 +473,7 @@
         <p class="stepno">Dibbler's Eatery</p>
         <h2 class="title" style="font-family:Fraunces,Georgia,serif;font-weight:300">The Evening Menu</h2>
         <p class="say menu-tag">Now serving evenings. All items guaranteed genuine. Prices in energy — check your tank, order accordingly.</p>
+        <p class="say" id="menu-sofar" style="font-size:13.5px;margin-top:4px"></p>
         <div class="specials-board">
           <p class="board-title">★ Today's Specials ★</p>
           <div id="menu-specials-list"></div>
@@ -635,9 +636,16 @@ function blockFor(kind, d){
     ].join("\n");
   }
   if (kind==="evening"){
-    var rows=["## Evening","","Evening:: "+oneLine(d.item)];
-    if (d.energy) rows.push("Energy:: "+d.energy+"/5");
-    if (d.engage) rows.push("Engage:: "+d.engage+"/5");
+    var orders = d.orders && d.orders.length ? d.orders
+      : (d.item ? [{item:d.item, energy:d.energy||0, engage:d.engage||0}] : []);
+    orders = orders.filter(function(o){ return o && o.item; });
+    var rows=["## Evening",""];
+    orders.forEach(function(o,i){
+      if (i>0) rows.push("");
+      rows.push("Evening:: "+oneLine(o.item));
+      if (o.energy) rows.push("Energy:: "+o.energy+"/5");
+      if (o.engage) rows.push("Engage:: "+o.engage+"/5");
+    });
     rows.push("");
     return rows.join("\n");
   }
@@ -770,6 +778,15 @@ function recordRating(id, energy, engage){
   e.n+=1; e.sum+=v; r[id]=e;
   store.set("rituals:menuRatings",JSON.stringify(r));
   return r;
+}
+/* Track the evening's orders in app state so the Evening block accumulates
+   across the night (the log is an arc, not a single entry). */
+function addEveningOrder(item, energy, engage){
+  var s=state(); var k=iso(new Date()); s[k]=s[k]||{};
+  s[k].eveningOrders=s[k].eveningOrders||[];
+  s[k].eveningOrders.push({item:item, energy:energy||0, engage:engage||0});
+  store.set("rituals:state",JSON.stringify(s));
+  return s[k].eveningOrders;
 }
 /* menuFor(dateISO, ratings) -> { specials:[..2], eightySix:item|null, house, sections }
    Deterministic for a given date + ratings; specials rotate daily and tilt
@@ -1107,6 +1124,10 @@ function renderMenu(){
   house.appendChild(hh); house.appendChild(itemRow(r.house));
   var secs=$("menu-sections"); secs.innerHTML="";
   r.sections.forEach(function(sec){ secs.appendChild(sectionBlock(sec)); });
+  var tonight=(todayState(iso(new Date())).eveningOrders||[]).map(function(o){return o.item}).filter(Boolean);
+  $("menu-sofar").textContent = tonight.length
+    ? "Tonight so far: "+tonight.join(" → ")
+    : "Tonight's still a blank page — the first order's the one that counts.";
 }
 function enterMenu(){ renderMenu(); menuGo(0); }
 function orderItem(it){
@@ -1127,8 +1148,9 @@ function wireRating(groupId, setter){
 }
 wireRating("menu-energy",function(v){ menuEnergy=v; });
 wireRating("menu-engage",function(v){ menuEngage=v; });
-$("menu-back").onclick=function(){ menuGo(0); };
+$("menu-back").onclick=function(){ renderMenu(); menuGo(0); };
 $("menu-order").onclick=function(){
+  addEveningOrder(currentOrder.name, menuEnergy, menuEngage);
   recordRating(currentOrder.id, menuEnergy, menuEngage);
   logRitual("evening");
 };
@@ -1150,7 +1172,7 @@ function logRitual(kind){
     : kind==="scaries"
       ? blockFor("scaries",{scDread:d.scDread,scLikely:d.scLikely,scCope:d.scCope,scFirst:d.scFirst,scPark:d.scPark,phrase:scariesClosing})
       : kind==="evening"
-        ? blockFor("evening",{item:currentOrder?currentOrder.name:"",energy:menuEnergy||0,engage:menuEngage||0})
+        ? blockFor("evening",{orders:d.eveningOrders||[]})
         : blockFor("shutdown",{open:d.open,wentRight:d.wentRight,carryover:d.carryover,mood:d.mood,phrase:s.closePhrase});
   statusEl(kind).textContent="Contacting Obsidian…";
   setToday("phase",kind);
@@ -1326,7 +1348,7 @@ document.addEventListener("DOMContentLoaded", boot);
 window.RitualsCore={modeFor:modeFor,dailyNotePath:dailyNotePath,blockFor:blockFor,
   upsertInContent:upsertInContent,renderTemplateForPreview:renderTemplateForPreview,
   parseOpenLoops:parseOpenLoops,iso:iso,minutes:minutes,settings:settings,store:store,
-  MENU:MENU,menuFor:menuFor,hashInt:hashInt,menuRatings:menuRatings,recordRating:recordRating,
+  MENU:MENU,menuFor:menuFor,hashInt:hashInt,menuRatings:menuRatings,recordRating:recordRating,addEveningOrder:addEveningOrder,
   ensureDailyNote:ensureDailyNote,vaultRead:vaultRead,vaultWrite:vaultWrite,state:state};
 })();
 </script>
