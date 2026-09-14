@@ -304,6 +304,94 @@ test("dom: sunday scaries rescue opens, walks, and logs", async (page) => {
   assert.equal(hasOpen, true);
 });
 
+/* ============ evening menu (Dibbler's Eatery) ============ */
+test("menu: blockFor evening omits empty ratings, carries chosen ones", async (page) => {
+  const b = await page.evaluate(() => window.RitualsCore.blockFor("evening", { item: "Walk with Henry", energy: 0, engage: 4 }));
+  assert.match(b, /^## Evening/);
+  assert.match(b, /Evening:: Walk with Henry/);
+  assert.ok(!b.includes("Energy:: 0"), "zero energy not written");
+  assert.match(b, /Engage:: 4\/5/);
+});
+test("menu: same date + same ratings → same specials; different dates rotate; house + 4 sections", async (page) => {
+  const r = await page.evaluate(() => {
+    const c = window.RitualsCore, none = {};
+    const a = c.menuFor("2026-09-14", none);
+    const b = c.menuFor("2026-09-14", none);
+    const c2 = c.menuFor("2026-09-15", none);
+    return {
+      sameDateSame: a.specials.map(i => i.id).join(",") === b.specials.map(i => i.id).join(","),
+      rotates: a.specials.map(i => i.id).join(",") !== c2.specials.map(i => i.id).join(","),
+      twoSpecials: a.specials.length,
+      house: a.house.id,
+      sections: a.sections.length,
+      freeItem: c.MENU.sections[3].items.some(i => i.id === "nothing" && i.cost === 0)
+    };
+  });
+  assert.equal(r.sameDateSame, true);
+  assert.equal(r.rotates, true);
+  assert.equal(r.twoSpecials, 2);
+  assert.equal(r.house, "walk-henry");
+  assert.equal(r.sections, 4);
+  assert.equal(r.freeItem, true);
+});
+test("menu: low-engagement dish gets 86'd off the specials rotation", async (page) => {
+  const r = await page.evaluate(() => {
+    const c = window.RitualsCore;
+    const ratings = { trivia: { n: 3, sum: 3 } };   // avg engagement 1.0 → 86'd
+    const m = c.menuFor("2026-09-14", ratings);
+    return { excluded: !m.specials.some(i => i.id === "trivia"), named: !!(m.eightySix && m.eightySix.id === "trivia") };
+  });
+  assert.equal(r.excluded, true);
+  assert.equal(r.named, true);
+});
+test("menu: recordRating accumulates engagement for the learning loop", async (page) => {
+  const r = await page.evaluate(() => {
+    const c = window.RitualsCore;
+    c.store.del("rituals:menuRatings");
+    c.recordRating("knit", 2, 4);
+    c.recordRating("knit", 3, 5);
+    const got = c.menuRatings()["knit"];
+    return { n: got.n, avg: got.sum / got.n };
+  });
+  assert.deepEqual([r.n, r.avg], [2, 4.5]);
+});
+test("dom: menu view opens from nav with dusk theme and renders specials + sections", async (page) => {
+  await open(page, { onboarded: "1", vaultName: "Obsidian", folder: "Daily Notes", restBase: "https://127.0.0.1:27124", token: "" });
+  await page.click('nav.seg button[data-mode="menu"]');
+  const theme = await page.evaluate(() => document.body.getAttribute("data-theme"));
+  assert.equal(theme, "dusk");
+  const info = await page.evaluate(() => ({
+    active: document.getElementById("v-menu").classList.contains("active"),
+    specials: document.querySelectorAll("#menu-specials-list .m-item").length,
+    house: document.querySelectorAll("#menu-house .m-item").length,
+    sections: document.querySelectorAll("#menu-sections .m-section").length,
+    items: document.querySelectorAll("#menu-sections .m-item").length,
+    orderBtns: document.querySelectorAll(".m-order").length
+  }));
+  assert.equal(info.active, true);
+  assert.equal(info.specials, 2);
+  assert.equal(info.house, 1);
+  assert.equal(info.sections, 4);
+  assert.ok(info.items >= 8);
+  assert.equal(info.orderBtns, info.specials + info.house + info.items);
+});
+test("dom: order flow → confirm panel → place order → fallback log buttons", async (page) => {
+  await open(page, { onboarded: "1", vaultName: "Obsidian", folder: "Daily Notes", restBase: "https://127.0.0.1:27124", token: "" });
+  await page.click('nav.seg button[data-mode="menu"]');
+  await page.click("#menu-sections .m-order");          // first section item
+  const confirm = await page.evaluate(() => {
+    const on = Array.from(document.querySelectorAll("#menu-stage .panel")).filter(p => p.classList.contains("on"));
+    return { onePanel: on.length === 1, named: document.getElementById("menu-order-name").textContent.length > 0 };
+  });
+  assert.equal(confirm.onePanel, true);
+  assert.equal(confirm.named, true);
+  await page.click("#menu-order");                       // no token → fallback buttons
+  await page.waitForSelector("#menu-status-confirm .actions button", { state: "visible" });
+  const hasOpen = await page.evaluate(() =>
+    Array.from(document.querySelectorAll("#menu-status-confirm button")).some(b => b.textContent.includes("Open in Obsidian")));
+  assert.equal(hasOpen, true);
+});
+
 /* ---------- run ---------- */
 const PORT = 8734;
 await new Promise(res => server.listen(PORT, "127.0.0.1", res));

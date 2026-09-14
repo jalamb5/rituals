@@ -20,6 +20,7 @@ Rituals deliberately does not read or write them — see DESIGN.md for why.
 |---|---|---|
 | Morning | Rise | brain-dump → one-thing → looking forward → opening phrase; surfaces yesterday's carryover |
 | End of work | Close the loop | gate into Super Productivity's end-of-day review |
+| Evening, any time | Menu | Dibbler's Eatery — the evening menu: choice not schedule, priced in ⚡, specials rotate and learn; ordering logs the evening block |
 | Bedtime | Shutdown | pure mental close — open loops (never tasks), what went right, carryover for tomorrow |
 | Weekend | — | no scheduled ritual window; you get the front door and pick |
 

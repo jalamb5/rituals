@@ -110,6 +110,45 @@ Sunday-specific. Each spoken phrase carries a small restrained citation line
   future Rituals view).
 - Bingo absorption into Rituals once the daily spine has real history.
 
+## Evening Menu (Dibbler's Eatery) — evidence base
+
+An on-demand evening *choice surface*, not a ritual flow: a restaurant-style menu
+priced in energy ⚡, with daily specials that rotate and learn. Reached via the
+Menu segment. Built 2026-09-14 with Justin after the afternoon-slump work: he
+wanted personal time run with work-level **intentionality but not scheduling** —
+"a menu, not a schedule" (his words), because having the choice is the point.
+
+**Why it's a menu, not a roster (the principal's own design constraint):**
+- **Control** is one of the four recovery experiences (Sonnentag & Fritz 2007) —
+  deciding for oneself during off-time satisfies autonomy (Deci & Ryan SDT). A
+  fixed weekly schedule would convert the intervention back into work; a curated
+  palette keeps the choosing his while the curation makes choosing cheap.
+- **Menu-not-schedule rules:** nothing on the menu is due, nothing is wrong,
+  repeats are fine, and "Nothing, On Purpose" is a printed menu item —
+  deliberate rest is a valid order (deliberate rest doesn't produce guilt;
+  unplanned drift does — see the productivity-guilt threads this drew on).
+
+**Mechanics (deliberately simple, single-file, no backend):**
+- Prices in ⚡ = energy cost. You read your tank and order accordingly — the
+  "what energy do I have" decision, made into a restaurant joke.
+- **Daily specials rotate deterministically** — FNV hash of the ISO date seeds a
+  mulberry32 PRNG; same date + same ratings → same specials (tested). No backend,
+  works offline, deterministic for tests.
+- **The menu learns:** engagement ratings (1–5, optional) accumulate in
+  `localStorage` (`rituals:menuRatings`); specials weight toward high-engagement
+  dishes; a dish averaging <2.5 engagement across ≥2 ratings gets **86'd** off the
+  rotation (shown on the board as "86'd today — chef's judgment. It'll be back.").
+- **Ordering = logging:** placing an order writes an `## Evening` block to the
+  daily note via the same REST / deep-link pipeline as Rise & Shutdown
+  (idempotent upsert; same-day reorder replaces). The evening log and the menu
+  choice are the same tap.
+- **House classic:** Walk with Henry never leaves the menu.
+- The dusk palette (previously defined-but-unused) is the menu's theme.
+
+**Scope guard:** the menu owns *choice*, not tasks and not reviews — it does not
+read the vault and never plans tomorrow (that stays Shutdown → Rise's carry).
+It is on-demand like Don't Panic; it does not set a daily phase.
+
 ## Don't Panic (rescue element) — evidence base
 
 An on-demand "rescue" moment for anticipatory dread — originally conceived for
