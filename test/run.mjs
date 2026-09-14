@@ -660,6 +660,44 @@ test("dom: off-menu order joins the check and its rating feeds the off-menu log 
   assert.equal(res.rotationKeys.length, 0, "off-menu ratings never touch the rotation store");
 });
 
+test("write-safety: the 2026-09-14 overwrite can never happen again", async (page) => {
+  const r = await page.evaluate(() => {
+    const c = window.RitualsCore;
+    const note = "# Summary:: good day\n\n## Work\nstuff\n\n## Shutdown\n\nOpenLoop:: x\n";
+    const block = c.blockFor("evening", { orders: [{ item: "Walk with Henry", engage: 4 }] });
+    // the bug: an empty read produced a merged content of just the block
+    const emptyReadRisk = c.assertNoteSafe("", block, "Evening");
+    // the bug: a merge that drops the original headings must refuse
+    const merged = c.upsertInContent(note, "Evening", block);
+    const mergedRisk = c.assertNoteSafe(note, merged, "Evening");
+    // the append path is safe and passes the guard
+    return {
+      emptyReadRisk: !!emptyReadRisk,
+      mergedKeepsAll: merged.includes("## Work") && merged.includes("## Shutdown") && merged.includes("Evening:: Walk with Henry"),
+      mergedRisk
+    };
+  });
+  assert.equal(r.emptyReadRisk, true, "empty read refuses");
+  assert.equal(r.mergedKeepsAll, true, "upsert preserves siblings");
+  assert.equal(r.mergedRisk, null, "legit append passes the guard");
+});
+test("write-safety: heading loss is refused, replacement of one section passes", async (page) => {
+  const r = await page.evaluate(() => {
+    const c = window.RitualsCore;
+    const note = "# Summary:: x\n\n## Rise\n\nOneThing:: A\n\n## Work\nkept\n";
+    const replaced = c.upsertInContent(note, "Rise", "## Rise\n\nOneThing:: B\n\n");
+    const dropped = c.assertNoteSafe(note, "## Evening\n\nEvening:: x\n", "Evening");   // only the block — the bug shape
+    return {
+      replaceOK: c.assertNoteSafe(note, replaced, "Rise"),
+      keepWork: replaced.includes("## Work") && replaced.includes("kept"),
+      droppedRefused: !!dropped
+    };
+  });
+  assert.equal(r.replaceOK, null, "single-section replacement is safe");
+  assert.equal(r.keepWork, true);
+  assert.equal(r.droppedRefused, true, "note replaced by a single block refuses");
+});
+
 /* ---------- run ---------- */
 const PORT = 8734;
 await new Promise(res => server.listen(PORT, "127.0.0.1", res));

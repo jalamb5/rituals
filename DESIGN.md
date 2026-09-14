@@ -237,6 +237,26 @@ positive," oversold breathwork-as-cure, forced optimism, venting-alone,
 mood meters/streaks/tracking (Mudo cautionary), clinical exposure, and any
 work-planning sprawl (hand off to Obsidian Tasks instead).
 
+## Write safety (2026-09-14 incident)
+
+A settle overwrote the entire daily note instead of appending. Root cause: an
+empty read (a note mid-creation — Obsidian/Templater fills new notes
+asynchronously) passed the `content !== null` check, upsert produced a "merged"
+document containing only the new block, and the PUT replaced the whole file.
+Fixed with three layers, all still testable in `assertNoteSafe`:
+
+1. **Empty reads are never notes.** `ensureDailyNote` treats blank reads as
+   unreadable, re-reads once after 900ms for async template fill, and otherwise
+   returns "no content" so the caller falls back to the deep link.
+2. **The merge guard.** Before every `vaultWrite`, `assertNoteSafe` refuses a
+   write if the original read was empty, the merge shrank the note, or any
+   heading that existed in the original (except the replaced section's own)
+   vanished from the result. Refusal writes nothing and offers the deep link —
+   the note is untouched, and the incident's exact shape ("note became just the
+   block") is now impossible.
+3. **Every write path uses it** — all ritual logs (`logRitual`) and the
+   Close-the-loop task tick (`toggleCloseTask`).
+
 ## Write mechanism & the browser constraint (important)
 
 Rituals logs by appending a block to the Obsidian daily note. Two paths:
