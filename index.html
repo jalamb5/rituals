@@ -531,12 +531,6 @@
         <input type="text" id="set-restbase" placeholder="https://127.0.0.1:27124">
         <label>Local REST API token</label>
         <input type="password" id="set-token">
-        <label>Opening phrase (Rise)</label>
-        <input type="text" id="set-openphrase" value="Fabricati diem.">
-        <label>Closing phrase (Shutdown)</label>
-        <input type="text" id="set-closephrase" value="All's well.">
-        <label>Rescue phrase (Don't Panic)</label>
-        <input type="text" id="set-scariesphrase" value="CATS ARE NICE.">
         <label>Work-day end — “Close the loop” window starts (24h)</label>
         <input type="text" id="set-spstart" value="16:00">
         <label>Bedtime — Shutdown window starts (24h)</label>
@@ -823,9 +817,13 @@ var store={
 var DEFAULTS={
   vaultName:"Obsidian", folder:"Daily Notes", restBase:"https://127.0.0.1:27124", token:"",
   riseStart:"05:00", spStart:"16:00", shutdownStart:"20:00",
-  openPhrase:"Fabricati diem.", closePhrase:"All's well.", scariesPhrase:"CATS ARE NICE.",
   onboarded:"0"
 };
+/* The three spoken phrases are hard-coded (decided with the principal
+   2026-09-12; no longer editable in Settings). The app ALWAYS reads these
+   constants — stale saved copies from the editable era are ignored, which
+   fixes the saved-old-phrase bug that a cached shell could cause. */
+var PHRASES={rise:"Fabricati diem.", shutdown:"All's well.", scaries:"CATS ARE NICE."};
 function settings(){ var s=Object.assign({},DEFAULTS);
   try{ var raw=store.get("rituals:settings"); if(raw) Object.assign(s,JSON.parse(raw)); }catch(e){}
   return s; }
@@ -1000,7 +998,7 @@ function enterRise(){
 function riseStartFlow(){
   var today=iso(new Date()); var d=todayState(today);
   $("rise-greet").textContent = d.greet || (new Date().getHours()<12? "Good morning. Today can wait a minute — let's set the one thing." : "Good day. Let's set the one thing.");
-  $("rise-phrase").textContent = cfg.openPhrase;
+  $("rise-phrase").textContent = PHRASES.rise;
   // carry-in
   var list=$("rise-carry-list"); list.innerHTML="";
   var carry=(d.carryIn||[]);
@@ -1024,7 +1022,7 @@ $("rise-thing-back").onclick=function(){ riseGo(2); };
 $("rise-thing-next").onclick=function(){ setToday("oneThing",$("rise-thing").value); riseGo(4); };
 $("rise-forward-back").onclick=function(){ riseGo(3); };
 $("rise-forward-next").onclick=function(){ setToday("lookingForward",$("rise-forward").value); riseGo(5); };
-$("rise-said").onclick=function(){ say(cfg.openPhrase); };
+$("rise-said").onclick=function(){ say(PHRASES.rise); };
 $("rise-rerun").onclick=function(){ riseStartFlow(); };
 $("rise-log").onclick=function(){ logRitual("rise"); };
 
@@ -1036,7 +1034,7 @@ function enterShutdown(){
 }
 function shutdownStart(){
   setToday("phase","shutdown");
-  $("sh-phrase").textContent = cfg.closePhrase;
+  $("sh-phrase").textContent = PHRASES.shutdown;
   $("sh-open").value=""; $("sh-right").value="";
   shutdownGo(0);
 }
@@ -1050,7 +1048,7 @@ $("sh-right-next").onclick=function(){
   setToday("carryover",carry);
   shutdownGo(3);
 };
-$("sh-said").onclick=function(){ say(cfg.closePhrase); };
+$("sh-said").onclick=function(){ say(PHRASES.shutdown); };
 $("shutdown-rerun").onclick=function(){ shutdownStart(); };
 $("sh-log").onclick=function(){ logRitual("shutdown"); };
 Array.prototype.forEach.call(document.querySelectorAll("#sh-mood button"),function(b){
@@ -1059,11 +1057,9 @@ Array.prototype.forEach.call(document.querySelectorAll("#sh-mood button"),functi
 
 /* ---- Don't Panic (rescue) ---- */
 var scariesGo=walk("scaries-flow");
-var scariesClosing = cfg.scariesPhrase || "CATS ARE NICE.";
 function scariesStart(){
   setToday("phase","scaries");
-  scariesClosing = (cfg.scariesPhrase) || "CATS ARE NICE.";
-  $("sc-phrase").textContent = scariesClosing;
+  $("sc-phrase").textContent = PHRASES.scaries;
   $("sc-dread").value=""; $("sc-cope").value=""; $("sc-first").value=""; $("sc-park").value="";
   Array.prototype.forEach.call(document.querySelectorAll("#sc-likely button"),function(x){x.classList.remove("on")});
   scariesGo(0);
@@ -1081,7 +1077,7 @@ $("sc-first-back").onclick=function(){ scariesGo(2); };
 $("sc-first-next").onclick=function(){ setToday("scFirst",$("sc-first").value); scariesGo(4); };
 $("sc-park-back").onclick=function(){ scariesGo(3); };
 $("sc-park-next").onclick=function(){ setToday("scPark",$("sc-park").value); scariesGo(5); };
-$("sc-said").onclick=function(){ say(scariesClosing); };
+$("sc-said").onclick=function(){ say(PHRASES.scaries); };
 $("sc-rerun").onclick=function(){ scariesStart(); };
 $("sc-log").onclick=function(){ logRitual("scaries"); };
 
@@ -1168,12 +1164,12 @@ function logRitual(kind){
   var d=todayState(iso(new Date()));
   var s=settings();
   var block = kind==="rise"
-    ? blockFor("rise",{head:d.head,oneThing:d.oneThing,lookingForward:d.lookingForward,mood:d.mood,phrase:s.openPhrase})
+    ? blockFor("rise",{head:d.head,oneThing:d.oneThing,lookingForward:d.lookingForward,mood:d.mood,phrase:PHRASES.rise})
     : kind==="scaries"
-      ? blockFor("scaries",{scDread:d.scDread,scLikely:d.scLikely,scCope:d.scCope,scFirst:d.scFirst,scPark:d.scPark,phrase:scariesClosing})
+      ? blockFor("scaries",{scDread:d.scDread,scLikely:d.scLikely,scCope:d.scCope,scFirst:d.scFirst,scPark:d.scPark,phrase:PHRASES.scaries})
       : kind==="evening"
         ? blockFor("evening",{orders:d.eveningOrders||[]})
-        : blockFor("shutdown",{open:d.open,wentRight:d.wentRight,carryover:d.carryover,mood:d.mood,phrase:s.closePhrase});
+        : blockFor("shutdown",{open:d.open,wentRight:d.wentRight,carryover:d.carryover,mood:d.mood,phrase:PHRASES.shutdown});
   statusEl(kind).textContent="Contacting Obsidian…";
   setToday("phase",kind);
   (async function(){
@@ -1296,7 +1292,6 @@ function fillSettingsForm(){
   var s=settings();
   $("set-vault").value=s.vaultName; $("set-folder").value=s.folder;
   $("set-restbase").value=s.restBase; $("set-token").value=s.token;
-  $("set-openphrase").value=s.openPhrase; $("set-closephrase").value=s.closePhrase; $("set-scariesphrase").value=s.scariesPhrase;
   $("set-spstart").value=s.spStart; $("set-shutdownstart").value=s.shutdownStart;
   $("on-vault").value=s.vaultName; $("on-folder").value=s.folder;
   $("on-restbase").value=s.restBase; $("on-token").value=s.token;
@@ -1307,9 +1302,6 @@ function persistSettings(){
   s.folder=$("set-folder").value.trim()||"Daily Notes";
   s.restBase=$("set-restbase").value.trim()||"https://127.0.0.1:27124";
   s.token=$("set-token").value.trim();
-  s.openPhrase=$("set-openphrase").value.trim()||"Fabricati diem.";
-  s.closePhrase=$("set-closephrase").value.trim()||"All's well.";
-  s.scariesPhrase=$("set-scariesphrase").value.trim()||"CATS ARE NICE.";
   s.spStart=$("set-spstart").value.trim()||"16:00";
   s.shutdownStart=$("set-shutdownstart").value.trim()||"20:00";
   s.onboarded="1"; saveSettings(s);
@@ -1349,6 +1341,7 @@ window.RitualsCore={modeFor:modeFor,dailyNotePath:dailyNotePath,blockFor:blockFo
   upsertInContent:upsertInContent,renderTemplateForPreview:renderTemplateForPreview,
   parseOpenLoops:parseOpenLoops,iso:iso,minutes:minutes,settings:settings,store:store,
   MENU:MENU,menuFor:menuFor,hashInt:hashInt,menuRatings:menuRatings,recordRating:recordRating,addEveningOrder:addEveningOrder,
+  PHRASES:PHRASES,
   ensureDailyNote:ensureDailyNote,vaultRead:vaultRead,vaultWrite:vaultWrite,state:state};
 })();
 </script>

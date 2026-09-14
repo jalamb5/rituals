@@ -103,6 +103,12 @@ NICE."** (*Sourcery*) beside a small cat — the ritual is day-agnostic, not
 Sunday-specific. Each spoken phrase carries a small restrained citation line
 (e.g. "— City Watch motto, *Guards! Guards!*").
 
+**Phrases are hard-coded (2026-09-14).** They were editable in Settings until
+the fields were removed: with the SW's cache-first shell, a stale app copy could
+save an old phrase over the real one when the Obsidian API key was entered, and
+the stale value then persisted. The app now always reads `PHRASES` constants and
+ignores any old saved values.
+
 ## Open questions / future options (not built yet)
 
 - Dedicated if-then "when will you do it" field for the one-thing step.

@@ -234,14 +234,32 @@ test("dom: mode-driven daylight/night theme follows the view", async (page) => {
   assert.equal(dusk, true);
 });
 
-test("core: defaults carry over Rise/Shutdown phrases", async (page) => {
+test("core: phrases are hard-coded constants; no phrase fields remain in settings", async (page) => {
   const d = await page.evaluate(() => {
     const c = window.RitualsCore;
     localStorage.removeItem("rituals:settings");
-    return { open: c.settings().openPhrase, close: c.settings().closePhrase };
+    return { rise: c.PHRASES.rise, shutdown: c.PHRASES.shutdown, scaries: c.PHRASES.scaries,
+             hasPhraseField: "openPhrase" in c.settings() };
   });
-  assert.equal(d.open, "Fabricati diem.");
-  assert.equal(d.close, "All's well.");
+  assert.deepEqual([d.rise, d.shutdown, d.scaries], ["Fabricati diem.", "All's well.", "CATS ARE NICE."]);
+  assert.equal(d.hasPhraseField, false);
+});
+test("dom: stale saved phrase from the editable era is ignored (regression: cached-shell bug)", async (page) => {
+  // Simulate a user whose localStorage still holds old phrase values from a cached shell
+  await open(page, { onboarded: "1", vaultName: "Obsidian", folder: "Daily Notes", restBase: "https://127.0.0.1:27124", token: "",
+    openPhrase: "STALE OPEN", closePhrase: "STALE CLOSE", scariesPhrase: "STALE RESCUE" });
+  await page.click('nav.seg button[data-mode="rise"]');
+  const rise = await page.evaluate(() => document.getElementById("rise-phrase").textContent);
+  assert.equal(rise, "Fabricati diem.");
+  await page.click('nav.seg button[data-mode="shutdown"]');
+  const sh = await page.evaluate(() => document.getElementById("sh-phrase").textContent);
+  assert.equal(sh, "All's well.");
+  await page.click("#rescue-btn");
+  const sc = await page.evaluate(() => document.getElementById("sc-phrase").textContent);
+  assert.equal(sc, "CATS ARE NICE.");
+  // Settings no longer exposes phrase inputs
+  const ids = await page.evaluate(() => Array.from(document.querySelectorAll("#v-settings input")).map(i => i.id));
+  assert.ok(!ids.some(id => id.includes("phrase")), "no phrase inputs in settings");
 });
 test("dom: log fallback offers an Obsidian deep-link", async (page) => {
   await open(page, { onboarded: "1", vaultName: "Obsidian", folder: "Daily Notes", restBase: "https://127.0.0.1:27124", token: "" });
