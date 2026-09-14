@@ -59,10 +59,15 @@ falls back to handing the note to Obsidian via a deep link.
 
 Dev: any static server works.
 
-```
+```sh
 python3 -m http.server 8000         # dev
 npm test                            # Playwright suite (needs cached chromium; set RITUALS_CHROME)
 ```
+
+Deploy: push to `main` (GitHub Pages, custom domain via `CNAME`).
+**Gotcha:** after changing `index.html`, bump `CACHE` in `sw.js` — the SW is
+cache-first with no revalidation, so installed PWAs would otherwise keep the old
+shell forever.
 
 ## Device setup (per device)
 
