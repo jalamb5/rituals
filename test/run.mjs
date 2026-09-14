@@ -77,7 +77,7 @@ test("core: modeFor weekday boundaries", async (page) => {
     const at = (day, h, m) => c.modeFor(new Date(2026, 8, day, h, m), S);
     return [at(7, 8, 0), at(7, 12, 30), at(7, 17, 0), at(7, 21, 0), at(7, 3, 30), at(7, 18, 0)];
   });
-  assert.deepEqual(r, ["rise", "off", "spgate", "shutdown", "shutdown", "spgate"]);
+  assert.deepEqual(r, ["rise", "off", "close", "shutdown", "shutdown", "close"]);
 });
 test("core: modeFor weekend → no scheduled ritual (front door), Shutdown at night", async (page) => {
   const r = await page.evaluate(() => {
@@ -458,6 +458,58 @@ test("dom: multiple orders accumulate in 'tonight so far' and the log block", as
     return c.blockFor("evening", { orders: d.eveningOrders });
   });
   assert.equal(block.split("\n").filter(l => l.startsWith("Evening::")).length, 2);
+});
+
+test("close: parseTasks finds open tasks; toggleTaskByIndex ticks exactly one", async (page) => {
+  const r = await page.evaluate(() => {
+    const c = window.RitualsCore;
+    const content = "# Day\n\n- [ ] first task 📅 2026-09-14\n- [x] done task\n- [ ] second task\n\n## Shutdown\n\nOpenLoop:: x\n";
+    const tasks = c.parseTasks(content);
+    const toggled = c.toggleTaskByIndex(content, tasks[1].idx);
+    const after = c.parseTasks(toggled);
+    return {
+      found: tasks.map(t => t.text),
+      toggledLine: toggled.split("\n")[4],
+      remaining: after.length,
+      doneUntouched: toggled.includes("- [x] done task")
+    };
+  });
+  assert.deepEqual(r.found, ["first task 📅 2026-09-14", "second task"]);
+  assert.match(r.toggledLine, /- \[x\] second task/);
+  assert.equal(r.remaining, 1);
+  assert.equal(r.doneUntouched, true);
+});
+test("close: openNoteURI builds an obsidian://open link; blockFor close carries time", async (page) => {
+  const r = await page.evaluate(() => {
+    const c = window.RitualsCore;
+    const uri = c.openNoteURI({ vaultName: "My Vault" }, "Daily Notes/2026-09-14");
+    return { uri, block: c.blockFor("close", { closedAt: "17:12" }) };
+  });
+  assert.ok(r.uri.startsWith("obsidian://open?vault=My%20Vault&file=Daily%20Notes%2F2026-09-14"));
+  assert.match(r.block, /^## Close/);
+  assert.match(r.block, /ClosedAt:: 17:12/);
+});
+test("dom: close-the-loop flow — intro, task panel, no-token fallback, Close log", async (page) => {
+  await open(page, { onboarded: "1", vaultName: "Obsidian", folder: "Daily Notes", restBase: "https://127.0.0.1:27124", token: "" });
+  await page.evaluate(() => { window.RitualsCore.enterClose(); document.getElementById("v-close").classList.add("active"); });
+  const intro = await page.evaluate(() => {
+    const on = Array.from(document.querySelectorAll("#close-flow .panel")).filter(p => p.classList.contains("on"));
+    return { one: on.length === 1, hasOpen: !!document.getElementById("close-open") };
+  });
+  assert.equal(intro.one, true);
+  assert.equal(intro.hasOpen, true);
+  await page.click("#close-begin");
+  const tasks = await page.evaluate(() => {
+    const on = Array.from(document.querySelectorAll("#close-flow .panel")).filter(p => p.classList.contains("on"));
+    return { one: on.length === 1, note: document.getElementById("close-list-note").textContent };
+  });
+  assert.equal(tasks.one, true);
+  assert.match(tasks.note, /REST isn't set up/);
+  await page.click("#close-done");
+  await page.waitForSelector("#close-status2 .actions button", { state: "visible" });
+  const hasOpen = await page.evaluate(() =>
+    Array.from(document.querySelectorAll("#close-status2 button")).some(b => b.textContent.includes("Open in Obsidian")));
+  assert.equal(hasOpen, true);
 });
 
 /* ---------- run ---------- */

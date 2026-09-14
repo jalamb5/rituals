@@ -3,9 +3,9 @@
 Rise, close the loop, shut down. A single static PWA that conducts the daily
 rituals around two tools that own the real state:
 
-- **Super Productivity** owns tasks and end-of-day task closure.
-- **Obsidian** owns the journal record — each ritual appends a structured block
-  into the existing `Daily Notes/YYYY-MM-DD.md`.
+- **Obsidian** owns tasks (the Tasks plugin), task closure, and the journal
+  record — each ritual appends a structured block into the existing
+  `Daily Notes/YYYY-MM-DD.md`.
 
 Rituals owns only the *moments* and the *cadence*. No backend, no accounts,
 no notifications — open it and it knows where you are in the day.
@@ -19,7 +19,7 @@ Rituals deliberately does not read or write them — see DESIGN.md for why.
 | When | View | Job |
 |---|---|---|
 | Morning | Rise | brain-dump → one-thing → looking forward → opening phrase; surfaces yesterday's carryover |
-| End of work | Close the loop | gate into Super Productivity's end-of-day review |
+| End of work | Close the loop | hand the work back in Obsidian — deep link into today's daily note to tick tasks off (Tasks plugin); REST list enhancement when local |
 | Evening, any time | Menu | Dibbler's Eatery — the evening menu: choice not schedule, priced in ⚡, specials rotate and learn; ordering logs the evening block |
 | Bedtime | Shutdown | pure mental close — open loops (never tasks), what went right, carryover for tomorrow |
 | Weekend | — | no scheduled ritual window; you get the front door and pick |

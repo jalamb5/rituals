@@ -1,7 +1,7 @@
 {
   "name": "Rituals — rise, close the loop, shut down",
   "short_name": "Rituals",
-  "description": "Rituals conducts your Rise, task-close and Shutdown. Tasks live in Super Productivity; the record lives in your Obsidian daily note.",
+  "description": "Rituals conducts your Rise, task-close and Shutdown. Tasks live in Obsidian (Tasks plugin); the record lives in your Obsidian daily note.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Rituals</title>
-<meta name="description" content="Rise, close the loop, and shut down the day — with Super Productivity for tasks and Obsidian for the record.">
+<meta name="description" content="Rise, close the loop, and shut down the day — with Obsidian Tasks and Obsidian for the record.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌅</text></svg>">
 <style>
@@ -208,8 +208,8 @@
   <section class="view" id="v-onboard">
     <div class="panel on"><div class="inner">
       <h2 class="title">Welcome to Rituals</h2>
-      <p class="say">Rituals conducts your Rise, task-close and Shutdown. Tasks live in Super
-        Productivity; the record lives in your Obsidian daily note. Rituals stores nothing else.</p>
+      <p class="say">Rituals conducts your Rise, task-close and Shutdown. Tasks live in Obsidian
+        (the Tasks plugin); the record lives in your Obsidian daily note. Rituals stores nothing else.</p>
       <div class="stack">
         <label>Obsidian vault name (deep links, e.g. “Obsidian”)</label>
         <input type="text" id="on-vault" placeholder="Obsidian">
@@ -518,6 +518,47 @@
     </div>
   </section>
 
+  <!-- ======================= CLOSE THE LOOP (end of work, Obsidian-native) ======================= -->
+  <section class="view" id="v-close">
+    <div class="lamp" aria-hidden="true"><div class="sun"></div></div>
+    <div class="horizon" aria-hidden="true"></div>
+    <div class="stage" id="close-flow">
+      <!-- 0 intro -->
+      <section class="panel on" data-step="0"><div class="inner">
+        <p class="stepno">Close the loop</p>
+        <h2 class="title">Hand the work back.</h2>
+        <p class="say">End of the work day. Tick off what's done in Obsidian — then close the
+          window and let Shutdown take it from here tonight. This is the hand-off, not the whole evening.</p>
+        <div class="actions">
+          <button class="btn primary" id="close-open">Open today's note in Obsidian</button>
+          <button class="btn ghost" id="close-begin">Start close</button>
+        </div>
+        <div class="status" id="close-status"></div>
+      </div></section>
+      <!-- 1 tasks (REST enhancement; deep link always works) -->
+      <section class="panel" data-step="1"><div class="inner">
+        <p class="stepno">Close the loop · 1/2</p>
+        <p class="q">Today's open tasks</p>
+        <p class="say">From today's daily note — tap to tick. If the list can't load, handle them in
+          Obsidian directly and just close.</p>
+        <div id="close-tasks"></div>
+        <p class="say" id="close-list-note" style="font-size:13.5px"></p>
+        <div class="actions">
+          <button class="btn ghost" id="close-open2">Open note in Obsidian</button>
+          <button class="btn primary" id="close-done">Done — close it</button>
+        </div>
+        <div class="status" id="close-status2"></div>
+      </div></section>
+      <!-- 2 done -->
+      <section class="panel" data-step="2"><div class="inner">
+        <p class="stepno">Close the loop</p>
+        <h2 class="title">Loop closed.</h2>
+        <p class="say" id="close-done-say">Work's handed back to Obsidian. Shutdown picks up from here tonight.</p>
+        <div class="actions"><button class="btn ghost" id="close-rerun">Run again</button></div>
+      </div></section>
+    </div>
+  </section>
+
   <!-- ======================= SETTINGS ======================= -->
   <section class="view" id="v-settings">
     <div class="panel on"><div class="inner">
@@ -544,7 +585,7 @@
     </div></div>
   </section>
 
-  <footer>Rituals — tasks live in Super Productivity, the record lives in Obsidian.</footer>
+  <footer>Rituals — tasks live in Obsidian Tasks, the record lives in Obsidian.</footer>
   <button class="rescue" id="rescue-btn" title="Don't Panic — a quiet moment when the dread hits">
     <svg class="guide" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5c3-1.5 6-1.5 9 0s6 1.5 9 0v14c-3 1.5-6 1.5-9 0s-6-1.5-9 0z"/><path d="M12 5v14"/></g></svg>
     <span>Don't Panic</span>
@@ -566,7 +607,7 @@ function minutes(t){ // "16:00" -> 960
 }
 var DAYS=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 
-/* modeFor(now, settings) -> rise|spgate|shutdown|off
+/* modeFor(now, settings) -> rise|close|shutdown|off
    Weekends have no scheduled ritual window: you get the front door and
    can open Rise or Shutdown yourself. (Weekly reviews are not a Rituals
    concern — they live in Obsidian; see DESIGN.md.) */
@@ -581,7 +622,7 @@ function modeFor(now, s){
   }
   if (t<riseStart) return "shutdown";
   if (t<12*60) return "rise";
-  if (t>=spStart && t<shStart) return "spgate";
+  if (t>=spStart && t<shStart) return "close";
   if (t>=shStart) return "shutdown";
   return "off";
 }
@@ -628,6 +669,9 @@ function blockFor(kind, d){
       "Phrase:: \""+oneLine(d.phrase||"")+"\"",
       ""
     ].join("\n");
+  }
+  if (kind==="close"){
+    return ["## Close","","ClosedAt:: "+(d.closedAt||""),""].join("\n");
   }
   if (kind==="evening"){
     var orders = d.orders && d.orders.length ? d.orders
@@ -782,6 +826,27 @@ function addEveningOrder(item, energy, engage){
   store.set("rituals:state",JSON.stringify(s));
   return s[k].eveningOrders;
 }
+/* Close-the-loop task helpers (Obsidian Tasks syntax: "- [ ]" / "- [x]"). */
+function parseTasks(content){
+  var out=[]; if (!content) return out;
+  content.split("\n").forEach(function(line,i){
+    if (/^\s*- \[ \]/.test(line)) out.push({idx:i, text:line.replace(/^\s*- \[ \]\s*/,"").trim()});
+  });
+  return out;
+}
+function toggleTaskByIndex(content, idx){
+  var lines=content.split("\n");
+  if (idx>=0 && idx<lines.length && /^\s*- \[ \]/.test(lines[idx])){
+    lines[idx]=lines[idx].replace(/\[ \]/,"[x]");
+  }
+  return lines.join("\n");
+}
+/* Deep-link URI that OPENS a note in Obsidian (works on desktop and mobile —
+   the Tasks plugin does the rest). */
+function openNoteURI(s, path){
+  if (!s.vaultName) return null;
+  return "obsidian://open?vault="+encodeURIComponent(s.vaultName)+"&file="+encodeURIComponent(path);
+}
 /* menuFor(dateISO, ratings) -> { specials:[..2], eightySix:item|null, house, sections }
    Deterministic for a given date + ratings; specials rotate daily and tilt
    toward high-engagement dishes; low-engagement dishes get 86'd. */
@@ -926,28 +991,29 @@ async function ensureDailyNote(s, dateISO){
 var $=function(id){return document.getElementById(id)};
 var els={
   daylabel:$("daylabel"), modenav:$("modenav"),
-  rise:$("v-rise"), shutdown:$("v-shutdown"), menu:$("v-menu"),
+  rise:$("v-rise"), shutdown:$("v-shutdown"), menu:$("v-menu"), close:$("v-close"),
   settings:$("v-settings"), onboard:$("v-onboard"), scaries:$("v-scaries")
 };
 var cfg=settings();
 var SPEECH_OK=false; try{ SPEECH_OK = "speechSynthesis" in window; }catch(e){}
 
 function show(id){
-  ["v-rise","v-menu","v-shutdown","v-settings","v-onboard","v-scaries"].forEach(function(v){
+  ["v-rise","v-menu","v-close","v-shutdown","v-settings","v-onboard","v-scaries"].forEach(function(v){
     var el=document.getElementById(v); if(el) el.classList.toggle("active", v===id);
   });
 }
 function themeFor(mode){
   if (mode==="rise") return "rise";
   if (mode==="menu") return "dusk";
+  if (mode==="close") return "dusk";
   if (mode==="shutdown") return "shutdown";
   if (mode==="scaries") return "scaries";
   return "rise";
 }
 function selectView(mode, push){
-  var map={rise:els.rise, menu:els.menu, shutdown:els.shutdown, settings:els.settings, scaries:els.scaries};
+  var map={rise:els.rise, menu:els.menu, close:els.close, shutdown:els.shutdown, settings:els.settings, scaries:els.scaries};
   if (mode==="onboard"){ show("v-onboard"); return; }
-  if (!map[mode]) mode="rise"; // off/spgate → the daily front door
+  if (!map[mode]) mode="rise"; // off → the daily front door
   show(map[mode].id);
   document.body.setAttribute("data-theme", themeFor(mode));
   Array.prototype.forEach.call(document.querySelectorAll("nav.seg button"),function(b){
@@ -1152,11 +1218,83 @@ $("menu-order").onclick=function(){
 };
 $("menu-rerun").onclick=function(){ renderMenu(); menuGo(0); };
 
+/* ---- Close the loop (end of work, Obsidian-native) ---- */
+var closeGo=walk("close-flow");
+function openTodayNote(){
+  var s=settings();
+  var uri=openNoteURI(s, dailyNotePath(iso(new Date()), s.folder));
+  if (!uri){
+    var el=document.querySelector('#close-flow .panel.on .status');
+    if (el){ el.className="status err"; el.textContent="Set your Obsidian vault name in Settings to open the note."; }
+    return;
+  }
+  window.location.href=uri;
+}
+function enterClose(){
+  closeGo(0);
+  $("close-status").className="status"; $("close-status").textContent="";
+  $("close-status2").className="status"; $("close-status2").textContent="";
+  $("close-tasks").innerHTML="";
+  var s=settings();
+  if (!s.token){
+    $("close-list-note").textContent="REST isn't set up here — tick tasks off in the note directly (the button above always works).";
+    return;
+  }
+  $("close-list-note").textContent="Loading today's note…";
+  loadCloseTasks();
+}
+async function loadCloseTasks(){
+  var s=settings();
+  try{
+    var content=await vaultRead(s, dailyNotePath(iso(new Date()), s.folder));
+    var list=$("close-tasks"); list.innerHTML="";
+    if (content===null){
+      $("close-list-note").textContent="No daily note yet — create it in Obsidian, or just close.";
+      return;
+    }
+    var tasks=parseTasks(content);
+    if (!tasks.length){
+      $("close-list-note").textContent="Nothing open in today's note — loop's already closed. Close it anyway.";
+      return;
+    }
+    $("close-list-note").textContent=tasks.length+" open task"+(tasks.length>1?"s":"")+" in today's note.";
+    tasks.forEach(function(t){
+      var row=document.createElement("button"); row.className="btn"; row.type="button";
+      row.style.cssText="display:block;width:100%;text-align:left;margin:6px 0;padding:10px 12px";
+      row.textContent="☐ "+t.text;
+      row.onclick=function(){ toggleCloseTask(t.idx, row); };
+      list.appendChild(row);
+    });
+  }catch(e){
+    $("close-list-note").textContent="Couldn't read the note — tick tasks off in Obsidian directly.";
+  }
+}
+async function toggleCloseTask(idx, rowEl){
+  var s=settings(); var path=dailyNotePath(iso(new Date()), s.folder);
+  try{
+    var content=await vaultRead(s, path);
+    if (content===null) return;
+    var next=toggleTaskByIndex(content, idx);
+    if (next===content){ rowEl.style.opacity=".45"; return; }
+    await vaultWrite(s, path, next);
+    rowEl.style.opacity=".45";
+    rowEl.textContent="☑ "+rowEl.textContent.replace(/^[☐☑]\s*/,"");
+  }catch(e){
+    $("close-list-note").textContent="Couldn't write back — tick it in Obsidian directly.";
+  }
+}
+$("close-open").onclick=openTodayNote;
+$("close-open2").onclick=openTodayNote;
+$("close-begin").onclick=function(){ closeGo(1); };
+$("close-done").onclick=function(){ logRitual("close"); };
+$("close-rerun").onclick=function(){ enterClose(); };
+
 /* ---- Logging (append block into daily note) ---- */
 function statusEl(kind){
   var id = kind==="rise" ? "rise-status"
     : kind==="scaries" ? "sc-status"
     : kind==="evening" ? "menu-status-confirm"
+    : kind==="close" ? "close-status2"
     : "sh-status";
   return $(id);
 }
@@ -1167,9 +1305,11 @@ function logRitual(kind){
     ? blockFor("rise",{head:d.head,oneThing:d.oneThing,lookingForward:d.lookingForward,mood:d.mood,phrase:PHRASES.rise})
     : kind==="scaries"
       ? blockFor("scaries",{scDread:d.scDread,scLikely:d.scLikely,scCope:d.scCope,scFirst:d.scFirst,scPark:d.scPark,phrase:PHRASES.scaries})
-      : kind==="evening"
-        ? blockFor("evening",{orders:d.eveningOrders||[]})
-        : blockFor("shutdown",{open:d.open,wentRight:d.wentRight,carryover:d.carryover,mood:d.mood,phrase:PHRASES.shutdown});
+      : kind==="close"
+        ? blockFor("close",{closedAt:pad(new Date().getHours())+":"+pad(new Date().getMinutes())})
+        : kind==="evening"
+          ? blockFor("evening",{orders:d.eveningOrders||[]})
+          : blockFor("shutdown",{open:d.open,wentRight:d.wentRight,carryover:d.carryover,mood:d.mood,phrase:PHRASES.shutdown});
   statusEl(kind).textContent="Contacting Obsidian…";
   setToday("phase",kind);
   (async function(){
@@ -1192,13 +1332,14 @@ function logRitual(kind){
         showLogButtons(kind, block);
         return;
       }
-      var content=upsertInContent(res.content, kind==="rise"?"Rise":(kind==="scaries"?"Don't Panic":(kind==="evening"?"Evening":"Shutdown")), block);
+      var content=upsertInContent(res.content, kind==="rise"?"Rise":(kind==="scaries"?"Don't Panic":(kind==="close"?"Close":(kind==="evening"?"Evening":"Shutdown"))), block);
       await vaultWrite(s, dailyNotePath(iso(new Date()), s.folder), content);
       var st=statusEl(kind); st.className="status ok";
       st.textContent="Logged to "+(s.folder)+"/"+iso(new Date())+".md (Obsidian Sync will carry it).";
       setToday(kind+"Logged","1"); setToday("phase",null);
       if (kind==="rise") riseGo(6);
       else if (kind==="scaries") scariesGo(6);
+      else if (kind==="close") closeGo(2);
       else if (kind==="evening"){ $("menu-done-say").textContent="The "+(currentOrder?currentOrder.name:"order")+" is placed and logged — bon appétit."; menuGo(2); }
       else { $("sh-carry-hint").textContent = (d.carryover||[]).length? "Carrying "+d.carryover.length+" to tomorrow's Rise: “"+d.carryover.join(" · ")+"”" : ""; shutdownGo(4); }
     }catch(err){
@@ -1251,6 +1392,7 @@ function logViaDeepLink(kind, block){
   el.textContent="Opened Obsidian to append — confirm there and the note is saved.";
   if (kind==="rise") riseGo(6);
   else if (kind==="scaries") scariesGo(6);
+  else if (kind==="close") closeGo(2);
   else if (kind==="evening"){ $("menu-done-say").textContent="Opened Obsidian to append your order — confirm there and it's saved."; menuGo(2); }
   else shutdownGo(4);
 }
@@ -1328,6 +1470,7 @@ function boot(){
   setInterval(tick, 60000);
   var now=new Date(), m=modeFor(now,cfg);
   if (m==="rise") enterRise();
+  if (m==="close") enterClose();
   if (m==="shutdown") enterShutdown();
   try{
     if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol))
@@ -1342,6 +1485,7 @@ window.RitualsCore={modeFor:modeFor,dailyNotePath:dailyNotePath,blockFor:blockFo
   parseOpenLoops:parseOpenLoops,iso:iso,minutes:minutes,settings:settings,store:store,
   MENU:MENU,menuFor:menuFor,hashInt:hashInt,menuRatings:menuRatings,recordRating:recordRating,addEveningOrder:addEveningOrder,
   PHRASES:PHRASES,
+  parseTasks:parseTasks,toggleTaskByIndex:toggleTaskByIndex,openNoteURI:openNoteURI,enterClose:enterClose,
   ensureDailyNote:ensureDailyNote,vaultRead:vaultRead,vaultWrite:vaultWrite,state:state};
 })();
 </script>

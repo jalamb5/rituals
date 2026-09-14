@@ -8,8 +8,9 @@
 
 Rituals should be **easy and fun to use**, help Justin **set himself up for
 success each morning** (Rise) and **truly turn off the work brain at night**
-(Shutdown). It deliberately owns only the *moments and cadence*; Super
-Productivity owns tasks and task closure, Obsidian owns the journal record.
+(Shutdown). It deliberately owns only the *moments and cadence*; Obsidian owns
+tasks (Tasks plugin), task closure, and the journal record — the end-of-work
+Close window deep-links into today's daily note where the ticking happens.
 No notifications, no accounts, no backend.
 
 ## The two rituals & their evidence
@@ -156,6 +157,21 @@ wanted personal time run with work-level **intentionality but not scheduling** �
 read the vault and never plans tomorrow (that stays Shutdown → Rise's carry).
 It is on-demand like Don't Panic; it does not set a daily phase.
 
+### Close the loop (end of work)
+The end-of-work window (weekday `spStart`–`shutdownStart`, dusk theme) now hands
+the work back to Obsidian directly: a deep link into today's daily note where
+the Tasks plugin's checkboxes live, plus a silent REST enhancement that lists
+today's open `- [ ]` lines from that note for tap-to-tick (write-back is a
+plain `[ ]`→`[x]` swap — Tasks-plugin format agnostic). Closing logs a `## Close`
+bookend block (`ClosedAt:: HH:MM`) so every moment lands in the daily note.
+
+**Mobile (2026-09-14 requirement):** the deep link (`obsidian://open?…`) is the
+primary path and works on desktop and mobile — Obsidian registers the scheme on
+both. The REST task list is explicitly a *local enhancement*: the Local REST API
+plugin is unreliable from phones (adb-reverse / LAN + cert dance), so when REST
+isn't reachable the app says so calmly and the deep link remains the whole answer
+— same pattern as the ritual-log fallback.
+
 ## Don't Panic (rescue element) — evidence base
 
 An on-demand "rescue" moment for anticipatory dread — originally conceived for
@@ -185,7 +201,7 @@ first-move for Monday (as an if-then) → park the rest → grounding + self-com
 **Deliberately excluded (weakly supported / counterproductive):** "just think
 positive," oversold breathwork-as-cure, forced optimism, venting-alone,
 mood meters/streaks/tracking (Mudo cautionary), clinical exposure, and any
-work-planning sprawl (hand off to Super Productivity instead).
+work-planning sprawl (hand off to Obsidian Tasks instead).
 
 ## Write mechanism & the browser constraint (important)
 

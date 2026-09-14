@@ -1,7 +1,7 @@
 {
   "name": "rituals",
   "version": "0.1.0",
-  "description": "Rituals — rise, close the loop, shut down. Single-file PWA; tasks in Super Productivity, record in Obsidian.",
+  "description": "Rituals — rise, close the loop, shut down. Single-file PWA; tasks in Obsidian Tasks, record in Obsidian.",
   "private": true,
   "scripts": {
     "test": "node test/run.mjs"
