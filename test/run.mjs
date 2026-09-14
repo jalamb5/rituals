@@ -606,6 +606,60 @@ test("dom: trivia row names the night's venues when it appears", async (page) =>
   // else: gate correctly kept trivia off the board on whatever day this ran
 });
 
+test("menu: off-menu entries aggregate into patterns for future menu items", async (page) => {
+  const r = await page.evaluate(() => {
+    const c = window.RitualsCore;
+    c.store.del("rituals:offmenu");
+    c.logOffmenuOrder("walk to the library", 1, 4);
+    c.logOffmenuOrder("Walk to the library!", 2, 5);
+    c.logOffmenuOrder("one-off thing", 0, 0);      // unrated → doesn't teach
+    return c.offmenuPatterns();
+  });
+  assert.equal(r.length, 1);
+  assert.deepEqual([r[0].n, Math.round(r[0].avg * 10) / 10], [2, 4.5]);
+  assert.match(r[0].text, /Walk to the library/i);
+});
+test("dom: off-menu order joins the check and its rating feeds the off-menu log only", async (page) => {
+  await open(page, { onboarded: "1", vaultName: "Obsidian", folder: "Daily Notes", restBase: "https://127.0.0.1:27124", token: "" });
+  await page.click('nav.seg button[data-mode="menu"]');
+  await page.click("#menu-offmenu");
+  const panel = await page.evaluate(() => {
+    const on = Array.from(document.querySelectorAll("#menu-stage .panel")).filter(p => p.classList.contains("on"));
+    return { one: on.length === 1, hasInput: !!document.getElementById("menu-off-text") };
+  });
+  assert.equal(panel.one, true);
+  assert.equal(panel.hasInput, true);
+  await page.fill("#menu-off-text", "repot the fig");
+  await page.click("#menu-off-add");
+  const added = await page.evaluate(() => ({
+    checkItems: document.querySelectorAll("#menu-check .check-item").length,
+    first: document.querySelector("#menu-check .check-item span").textContent,
+    status: document.getElementById("menu-status").textContent
+  }));
+  assert.equal(added.checkItems, 1);
+  assert.equal(added.first, "repot the fig");
+  assert.match(added.status, /Added/);
+  // settle with an engagement rating → off-menu log gets it, rotation store doesn't
+  await page.click("#menu-settle");
+  await page.click('#menu-settle-list .settle-item:first-child .mood-btns[data-kind="g"] button[data-m="5"]');
+  await page.click("#menu-settle-send");
+  await page.waitForSelector("#menu-status-confirm .actions button", { state: "visible" });
+  const res = await page.evaluate(() => {
+    const c = window.RitualsCore;
+    const d = c.state()[c.iso(new Date())];
+    return {
+      block: c.blockFor("evening", { orders: d.eveningOrders }),
+      patterns: c.offmenuPatterns(),
+      rotationKeys: Object.keys(c.menuRatings())
+    };
+  });
+  assert.match(res.block, /Evening:: repot the fig/);
+  assert.match(res.block, /Engage:: 5\/5/);
+  assert.equal(res.patterns.length, 1);
+  assert.equal(res.patterns[0].n, 1);
+  assert.equal(res.rotationKeys.length, 0, "off-menu ratings never touch the rotation store");
+});
+
 /* ---------- run ---------- */
 const PORT = 8734;
 await new Promise(res => server.listen(PORT, "127.0.0.1", res));

@@ -164,6 +164,17 @@ genuine."); and the eatery's resident cat supervising the check (Frank & Ida
 are on the menu, so the cat has a reason to be there). Deliberately nothing
 else: no animation, no sound, no gamification.
 
+**Off-menu (2026-09-14):** a free-text "Something else? Order off-menu" captures
+what Justin actually did when the menu didn't offer it. Off-menu orders ride the
+check and the `## Evening` block like any dish (0⚡ on the receipt — the price
+is unknown until it's a menu item). Their ratings deliberately go to a separate
+log (`rituals:offmenu`) rather than the rotation store — one-offs shouldn't sway
+the board — and `offmenuPatterns()` aggregates by normalised text (count + avg
+engagement, sorted). **The learning loop:** repeated high-engagement patterns are
+the raw material for future menu items — Dibbler mines this with Justin at the
+weekly review and proposes additions to `MENU`; the principal ratifies, keeping
+the menu curated and maintainable.
+
 **Trivia gate (2026-09-14):** "Trivia Night" only enters the specials rotation
 when a verified pub is actually running a quiz that evening. Schedule data
 (`TRIVIA_VENUES`, with sources inline) verified 2026-09-14: all four nearby

@@ -498,6 +498,7 @@
         </div>
         <div class="house-classic" id="menu-house"></div>
         <div id="menu-sections"></div>
+        <button class="btn ghost" id="menu-offmenu" style="margin-top:12px;width:100%">Something else? Order off-menu</button>
         <div class="check-box">
           <div style="display:flex;align-items:center;gap:8px;justify-content:center;margin-bottom:10px">
             <svg class="cat" style="width:20px;height:20px" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
@@ -538,6 +539,19 @@
         <div id="menu-receipt"></div>
         <p class="say" id="menu-done-say">Check settled and logged — bon appétit.</p>
         <div class="actions"><button class="btn ghost" id="menu-rerun">Back to menu</button></div>
+      </div></section>
+      <!-- 3 off-menu -->
+      <section class="panel" data-step="3"><div class="inner">
+        <p class="stepno">Dibbler's Eatery · off-menu</p>
+        <p class="q">What are you actually doing tonight?</p>
+        <p class="say">Not on the menu is fine — the kitchen takes it as feedback. Name it and it
+          goes on the check; how it lands later feeds the next menu.</p>
+        <textarea id="menu-off-text" rows="2" placeholder="e.g. the thing you're really doing…"></textarea>
+        <div class="actions">
+          <button class="btn ghost" id="menu-off-back">Back to menu</button>
+          <button class="btn primary" id="menu-off-add">Add to check</button>
+        </div>
+        <div class="status" id="menu-off-status"></div>
       </div></section>
     </div>
   </section>
@@ -856,6 +870,31 @@ function removeEveningOrder(dateISO, idx){
   arr.splice(idx,1);
   store.set("rituals:state",JSON.stringify(s));
   return arr;
+}
+/* Off-menu learning: free-text orders accumulate in their own log so patterns
+   can become future menu items. Ratings for off-menu orders land HERE, never
+   in the rotation's per-dish store (one-offs shouldn't sway the board). */
+function offmenuLog(){
+  try{ return JSON.parse(store.get("rituals:offmenu")||"[]"); }catch(e){ return []; }
+}
+function logOffmenuOrder(text, energy, engage){
+  var arr=offmenuLog();
+  arr.push({text:text, energy:energy||0, engage:engage||0, date:iso(new Date())});
+  store.set("rituals:offmenu",JSON.stringify(arr));
+  return arr;
+}
+function offmenuPatterns(){
+  var agg={};
+  offmenuLog().forEach(function(e){
+    if (!e.engage) return;                       // unrated entries don't teach
+    var k=e.text.toLowerCase().replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim();
+    if (!k) return;
+    agg[k]=agg[k]||{text:e.text, n:0, sum:0};
+    agg[k].n+=1; agg[k].sum+=e.engage;
+  });
+  return Object.keys(agg).map(function(k){
+    var a=agg[k]; return {text:a.text, n:a.n, avg:a.sum/a.n};
+  }).sort(function(x,y){ return y.avg-x.avg || y.n-x.n; });
 }
 /* Whimsy, kept on a leash: a chef's note that rotates deterministically with
    the date (same seed machinery as the specials), and dish lookup for receipts. */
@@ -1323,6 +1362,31 @@ $("menu-settle-list").onclick=function(ev){
   b.classList.add("on");
   settleRatings[idx]=settleRatings[idx]||{}; settleRatings[idx][kind]=m;
 };
+/* ---- off-menu orders (capture what you actually did; feed future menus) ---- */
+var offmenuSeq=0;
+function offmenuOpen(){
+  $("menu-off-text").value="";
+  $("menu-off-status").className="status"; $("menu-off-status").textContent="";
+  setTimeout(function(){ $("menu-off-text").focus(); }, 60);
+  menuGo(3);
+}
+$("menu-offmenu").onclick=offmenuOpen;
+$("menu-off-back").onclick=function(){ menuGo(0); };
+$("menu-off-add").onclick=function(){
+  var t=$("menu-off-text").value.replace(/\s+/g," ").trim().slice(0,120);
+  var st=$("menu-off-status");
+  if (!t){
+    st.className="status err";
+    st.textContent="Name it first — even \"nothing, on purpose\" has a name.";
+    return;
+  }
+  addEveningOrder({id:"offmenu:"+(+new Date())+":"+(offmenuSeq++), name:t});
+  setToday("eveningSettled","0");
+  renderCheck();
+  var mst=$("menu-status"); mst.className="status ok";
+  mst.textContent="Added \u201c"+t+"\u201d to tonight's check.";
+  menuGo(0);
+};
 $("menu-settle").onclick=function(){ settleOpen(); };
 $("menu-settle-back").onclick=function(){ renderCheck(); menuGo(0); };
 $("menu-settle-send").onclick=function(){
@@ -1332,7 +1396,10 @@ $("menu-settle-send").onclick=function(){
     var r=settleRatings[i]; var o=orders[+i]; if (!o) return;
     if (r.e) o.energy=r.e;
     if (r.g) o.engage=r.g;
-    if (r.e||r.g) recordRating(o.id, r.e||0, r.g||0);
+    if (r.e||r.g){
+      if (o.id && o.id.indexOf("offmenu:")===0) logOffmenuOrder(o.item, r.e||0, r.g||0);
+      else recordRating(o.id, r.e||0, r.g||0);
+    }
   });
   if (s[k]) s[k].eveningOrders=orders;
   store.set("rituals:state",JSON.stringify(s));
@@ -1636,6 +1703,7 @@ window.RitualsCore={modeFor:modeFor,dailyNotePath:dailyNotePath,blockFor:blockFo
   PHRASES:PHRASES,
   chefNoteFor:chefNoteFor,dishById:dishById,CHEF_NOTES:CHEF_NOTES,renderReceipt:renderReceipt,
   TRIVIA_VENUES:TRIVIA_VENUES,triviaTonight:triviaTonight,
+  offmenuLog:offmenuLog,logOffmenuOrder:logOffmenuOrder,offmenuPatterns:offmenuPatterns,
   parseTasks:parseTasks,toggleTaskByIndex:toggleTaskByIndex,openNoteURI:openNoteURI,enterClose:enterClose,
   ensureDailyNote:ensureDailyNote,vaultRead:vaultRead,vaultWrite:vaultWrite,state:state};
 })();
