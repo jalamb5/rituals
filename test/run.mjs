@@ -525,6 +525,53 @@ test("dom: close-the-loop flow — intro, task panel, no-token fallback, Close l
   assert.equal(hasOpen, true);
 });
 
+test("menu: chef note rotates deterministically; dish lookup finds costs", async (page) => {
+  const r = await page.evaluate(() => {
+    const c = window.RitualsCore;
+    const a = c.chefNoteFor("2026-09-14");
+    const b = c.chefNoteFor("2026-09-14");
+    const c2 = c.chefNoteFor("2026-09-15");
+    return {
+      deterministic: a === b,
+      rotates: a !== c2,
+      inRange: c.CHEF_NOTES.includes(a),
+      walkCost: c.dishById("walk-henry").cost,
+      nothingCost: c.dishById("nothing").cost,
+      unknown: c.dishById("nope") === null
+    };
+  });
+  assert.equal(r.deterministic, true);
+  assert.equal(r.rotates, true);
+  assert.equal(r.inRange, true);
+  assert.equal(r.walkCost, 1);
+  assert.equal(r.nothingCost, 0);
+  assert.equal(r.unknown, true);
+});
+test("dom: menu shows the chef's note; settling renders a receipt with totals", async (page) => {
+  await open(page, { onboarded: "1", vaultName: "Obsidian", folder: "Daily Notes", restBase: "https://127.0.0.1:27124", token: "" });
+  await page.click('nav.seg button[data-mode="menu"]');
+  const info = await page.evaluate(() => ({
+    note: document.getElementById("menu-chef-note").textContent,
+    cat: document.querySelector(".check-box .cat") !== null
+  }));
+  assert.ok(info.note.length > 10, "chef's note rendered");
+  assert.equal(info.cat, true, "eatery cat present");
+  // order two items, settle, render receipt via the exposed hook (panel 2 is off-view without a successful REST log)
+  await page.click("#menu-sections .m-order");
+  await page.click("#menu-house .m-order");
+  await page.click("#menu-settle");
+  await page.click("#menu-settle-send");
+  await page.waitForSelector("#menu-status-confirm .actions button", { state: "visible" });
+  const receipt = await page.evaluate(() => {
+    window.RitualsCore.renderReceipt();
+    return document.getElementById("menu-receipt").textContent;
+  });
+  assert.match(receipt, /Dibbler's Eatery/);
+  assert.match(receipt, /Total/);
+  assert.ok(receipt.includes("⚡"), "priced lines on the receipt");
+  assert.ok(receipt.includes("genuinely genuine"), "house motto on the receipt");
+});
+
 /* ---------- run ---------- */
 const PORT = 8734;
 await new Promise(res => server.listen(PORT, "127.0.0.1", res));

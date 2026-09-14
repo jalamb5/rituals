@@ -195,6 +195,14 @@
   .settle-item{padding:12px 0; border-bottom:1px solid var(--line)}
   .settle-item:last-child{border-bottom:0}
   .settle-name{font-weight:600; margin:0 0 4px}
+  /* ---- whimsy, kept on a leash ---- */
+  .chef-note{font-style:italic; font-size:13px; color:var(--muted); margin:0 0 12px}
+  .receipt{font-size:14px; border:1px dashed var(--line); border-radius:12px; padding:14px 16px; margin:10px 0; background:var(--card2)}
+  .receipt .r-line{display:flex; align-items:baseline; gap:8px; padding:2px 0}
+  .receipt .r-name{font-weight:500}
+  .receipt .r-dots{flex:1; border-bottom:1px dotted var(--line); transform:translateY(-3px)}
+  .receipt .r-total{margin-top:8px; padding-top:8px; border-top:1px solid var(--line); display:flex; justify-content:space-between; font-weight:600}
+  .receipt .r-foot{color:var(--dim); font-size:12.5px; font-style:italic; margin-top:8px; text-align:center}
 </style>
 </head>
 <body>
@@ -482,6 +490,7 @@
         <p class="stepno">Dibbler's Eatery</p>
         <h2 class="title" style="font-family:Fraunces,Georgia,serif;font-weight:300">The Evening Menu</h2>
         <p class="say menu-tag">Now serving evenings. All items guaranteed genuine. Prices in energy — check your tank, order accordingly.</p>
+        <p class="chef-note" id="menu-chef-note"></p>
         <div class="specials-board">
           <p class="board-title">★ Today's Specials ★</p>
           <div id="menu-specials-list"></div>
@@ -490,7 +499,19 @@
         <div class="house-classic" id="menu-house"></div>
         <div id="menu-sections"></div>
         <div class="check-box">
-          <p class="board-title">★ Tonight's Check ★</p>
+          <div style="display:flex;align-items:center;gap:8px;justify-content:center;margin-bottom:10px">
+            <svg class="cat" style="width:20px;height:20px" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+              <g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 20c-4 1-7 4-8 8-1 5 1 9 5 11 3 2 7 3 11 3h8c4 0 8-1 11-3 4-2 6-6 5-11-1-4-4-7-8-8"/>
+                <path d="M10 26c-2 0-3-1-3-3 0-2 2-3 4-2"/>
+                <path d="M38 26c2 0 3-1 3-3 0-2-2-3-4-2"/>
+                <path d="M16 30c2-1 4-1 8-1s6 0 8 1"/>
+                <path d="M18 35c1.5 1 10.5 1 12 0"/>
+                <path d="M24 27l4-8 5 3M20 22l2-9-6 4"/>
+              </g>
+            </svg>
+            <p class="board-title" style="margin:0">Tonight's Check</p>
+          </div>
           <div id="menu-check"></div>
           <button class="btn primary" id="menu-settle" style="margin-top:10px">Settle the check</button>
         </div>
@@ -514,7 +535,8 @@
       <section class="panel" data-step="2"><div class="inner">
         <p class="stepno">Dibbler's Eatery</p>
         <h2 class="title">Order up.</h2>
-        <p class="say" id="menu-done-say"></p>
+        <div id="menu-receipt"></div>
+        <p class="say" id="menu-done-say">Check settled and logged — bon appétit.</p>
         <div class="actions"><button class="btn ghost" id="menu-rerun">Back to menu</button></div>
       </div></section>
     </div>
@@ -834,6 +856,24 @@ function removeEveningOrder(dateISO, idx){
   arr.splice(idx,1);
   store.set("rituals:state",JSON.stringify(s));
   return arr;
+}
+/* Whimsy, kept on a leash: a chef's note that rotates deterministically with
+   the date (same seed machinery as the specials), and dish lookup for receipts. */
+var CHEF_NOTES=[
+  "Tonight the kitchen recommends whatever your tank allows.",
+  "Fresh fish? No. Fresh ideas? Occasionally.",
+  "Every dish guaranteed genuine — a guarantee of nothing in particular.",
+  "The specials board is an oracle. The oracle is sometimes wrong.",
+  "Prices in energy, payment in time — the only exchange rate we honour.",
+  "If in doubt, order the walk. It has never disappointed."
+];
+function chefNoteFor(dateISO){ return CHEF_NOTES[hashInt(dateISO+"|note") % CHEF_NOTES.length]; }
+function dishById(id){
+  if (MENU.house.id===id) return MENU.house;
+  var all=MENU.specials.slice();
+  MENU.sections.forEach(function(sec){ all=all.concat(sec.items); });
+  for (var i=0;i<all.length;i++) if (all[i].id===id) return all[i];
+  return null;
 }
 /* Close-the-loop task helpers (Obsidian Tasks syntax: "- [ ]" / "- [x]"). */
 function parseTasks(content){
@@ -1185,6 +1225,7 @@ function sectionBlock(sec){
 }
 function renderMenu(){
   var r=menuFor(iso(new Date()), menuRatings());
+  $("menu-chef-note").textContent = chefNoteFor(iso(new Date()));
   var specList=$("menu-specials-list"); specList.innerHTML="";
   r.specials.forEach(function(it){ specList.appendChild(itemRow(it)); });
   $("menu-86").textContent = r.eightySix
@@ -1277,6 +1318,31 @@ $("menu-settle-send").onclick=function(){
   renderCheck();
   logRitual("evening");
 };
+function renderReceipt(){
+  var box=$("menu-receipt"); box.innerHTML="";
+  var orders=todayState(iso(new Date())).eveningOrders||[];
+  if (!orders.length) return;
+  var wrap=document.createElement("div"); wrap.className="receipt";
+  var head=document.createElement("p"); head.className="board-title"; head.textContent="★ Dibbler's Eatery — tonight's check ★";
+  wrap.appendChild(head);
+  var total=0;
+  orders.forEach(function(o){
+    var d=dishById(o.id); var cost=d?d.cost:0; total+=cost;
+    var line=document.createElement("div"); line.className="r-line";
+    var n=document.createElement("span"); n.className="r-name"; n.textContent=o.item;
+    var dots=document.createElement("span"); dots.className="r-dots";
+    var c=document.createElement("span"); c.className="m-cost"+(cost===0?" free":""); c.textContent=cost+"⚡";
+    line.appendChild(n); line.appendChild(dots); line.appendChild(c);
+    wrap.appendChild(line);
+  });
+  var tot=document.createElement("div"); tot.className="r-total";
+  tot.innerHTML="<span>Total</span><span>"+total+"⚡</span>";
+  wrap.appendChild(tot);
+  var foot=document.createElement("p"); foot.className="r-foot";
+  foot.textContent="Paid in full with time — the only currency we accept. All items genuinely genuine.";
+  wrap.appendChild(foot);
+  box.appendChild(wrap);
+}
 $("menu-rerun").onclick=function(){ renderMenu(); menuGo(0); };
 
 /* ---- Close the loop (end of work, Obsidian-native) ---- */
@@ -1401,7 +1467,7 @@ function logRitual(kind){
       if (kind==="rise") riseGo(6);
       else if (kind==="scaries") scariesGo(6);
       else if (kind==="close") closeGo(2);
-      else if (kind==="evening"){ $("menu-done-say").textContent="Check settled and logged — bon appétit."; menuGo(2); }
+      else if (kind==="evening"){ renderReceipt(); $("menu-done-say").textContent="Check settled and logged — bon appétit."; menuGo(2); }
       else { $("sh-carry-hint").textContent = (d.carryover||[]).length? "Carrying "+d.carryover.length+" to tomorrow's Rise: “"+d.carryover.join(" · ")+"”" : ""; shutdownGo(4); }
     }catch(err){
       // Browsers block a page served from the internet (like the hosted ritual.*)
@@ -1454,7 +1520,7 @@ function logViaDeepLink(kind, block){
   if (kind==="rise") riseGo(6);
   else if (kind==="scaries") scariesGo(6);
   else if (kind==="close") closeGo(2);
-  else if (kind==="evening"){ $("menu-done-say").textContent="Opened Obsidian to append your check — confirm there and it's saved."; menuGo(2); }
+  else if (kind==="evening"){ renderReceipt(); $("menu-done-say").textContent="Opened Obsidian to append your check — confirm there and it's saved."; menuGo(2); }
   else shutdownGo(4);
 }
 function showCopyFallback(kind, block){
@@ -1546,6 +1612,7 @@ window.RitualsCore={modeFor:modeFor,dailyNotePath:dailyNotePath,blockFor:blockFo
   parseOpenLoops:parseOpenLoops,iso:iso,minutes:minutes,settings:settings,store:store,
   MENU:MENU,menuFor:menuFor,hashInt:hashInt,menuRatings:menuRatings,recordRating:recordRating,addEveningOrder:addEveningOrder,removeEveningOrder:removeEveningOrder,
   PHRASES:PHRASES,
+  chefNoteFor:chefNoteFor,dishById:dishById,CHEF_NOTES:CHEF_NOTES,renderReceipt:renderReceipt,
   parseTasks:parseTasks,toggleTaskByIndex:toggleTaskByIndex,openNoteURI:openNoteURI,enterClose:enterClose,
   ensureDailyNote:ensureDailyNote,vaultRead:vaultRead,vaultWrite:vaultWrite,state:state};
 })();

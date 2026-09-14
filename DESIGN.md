@@ -155,6 +155,15 @@ wanted personal time run with work-level **intentionality but not scheduling** �
 - **House classic:** Walk with Henry never leaves the menu.
 - The dusk palette (previously defined-but-unused) is the menu's theme.
 
+**Whimsy, kept on a leash (2026-09-14):** three touches, all in the house
+register — a **chef's note** that rotates deterministically with the date (same
+seed machinery as the specials; six lines, all "genuine" but none insistent);
+a **receipt** when the check is settled (itemised with ⚡ prices, a total, and
+"Paid in full with time — the only currency we accept. All items genuinely
+genuine."); and the eatery's resident cat supervising the check (Frank & Ida
+are on the menu, so the cat has a reason to be there). Deliberately nothing
+else: no animation, no sound, no gamification.
+
 **Scope guard:** the menu owns *choice*, not tasks and not reviews — it does not
 read the vault and never plans tomorrow (that stays Shutdown → Rise's carry).
 It is on-demand like Don't Panic; it does not set a daily phase.
