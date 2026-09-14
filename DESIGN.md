@@ -164,6 +164,18 @@ genuine."); and the eatery's resident cat supervising the check (Frank & Ida
 are on the menu, so the cat has a reason to be there). Deliberately nothing
 else: no animation, no sound, no gamification.
 
+**Trivia gate (2026-09-14):** "Trivia Night" only enters the specials rotation
+when a verified pub is actually running a quiz that evening. Schedule data
+(`TRIVIA_VENUES`, with sources inline) verified 2026-09-14: all four nearby
+venues run weekly quizzes on **Tuesdays, 8pm** — The Prince of Peckham
+(DesignMyNight's dated Tuesday list to Sep 2027), The White Horse (Peckham
+Rye), The East Dulwich Tavern, Grove House Tavern (Camberwell). A lone Prince
+of Peckham IG reel claiming "quiz every Sunday" is unverified and overruled by
+the dated list — revisit if the reel's claim ever gets a second source.
+**Re-verification cadence:** pub schedules drift; re-check the sources when the
+board starts to feel stale (edits are one line per venue). The gate keeps the
+menu honest and offline — no network, deterministic tests.
+
 **Scope guard:** the menu owns *choice*, not tasks and not reviews — it does not
 read the vault and never plans tomorrow (that stays Shutdown → Rise's carry).
 It is on-demand like Don't Panic; it does not set a daily phase.

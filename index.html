@@ -896,6 +896,21 @@ function openNoteURI(s, path){
   if (!s.vaultName) return null;
   return "obsidian://open?vault="+encodeURIComponent(s.vaultName)+"&file="+encodeURIComponent(path);
 }
+/* Trivia gate: the menu only suggests Trivia Night when a nearby pub is
+   actually running one. Static schedule data, verified 2026-09-14 (sources
+   inline) — re-check when it starts to feel stale; one-line edits here.
+   Note: one Prince of Peckham IG reel claims a Sunday quiz — unverified,
+   overruled by DesignMyNight's dated Tuesday list. */
+var TRIVIA_VENUES=[
+  {pub:"The Prince of Peckham", area:"Peckham", day:2, time:"8pm", src:"designmynight.com — weekly Tuesdays, dated list to Sep 2027"},
+  {pub:"The White Horse", area:"Peckham Rye", day:2, time:"8pm", src:"designmynight.com"},
+  {pub:"The East Dulwich Tavern", area:"East Dulwich", day:2, time:"8pm", src:"urbanpubsandbars.com"},
+  {pub:"Grove House Tavern", area:"Camberwell", day:2, time:"8pm", src:"pubquizzers.com"}
+];
+function triviaTonight(dateISO){
+  var d=new Date(+dateISO.slice(0,4), +dateISO.slice(5,7)-1, +dateISO.slice(8,10));
+  return TRIVIA_VENUES.filter(function(v){ return v.day===d.getDay(); });
+}
 /* menuFor(dateISO, ratings) -> { specials:[..2], eightySix:item|null, house, sections }
    Deterministic for a given date + ratings; specials rotate daily and tilt
    toward high-engagement dishes; low-engagement dishes get 86'd. */
@@ -904,6 +919,7 @@ function menuFor(dateISO, ratings){
   function avg(id){ var e=ratings[id]; return (e&&e.n)? e.sum/e.n : null; }
   var weighted=[], eightySix=null;
   MENU.specials.forEach(function(it){
+    if (it.id==="trivia" && triviaTonight(dateISO).length===0) return; // only when a local pub is running one
     var a=avg(it.id);
     if (a!==null && a<2.5 && ratings[it.id].n>=2){ if(!eightySix) eightySix=it; return; } // 86'd
     weighted.push({it:it, w:1+(a||0)*0.35});
@@ -1199,14 +1215,15 @@ $("sc-log").onclick=function(){ logRitual("scaries"); };
 /* ---- Evening Menu (Dibbler's Eatery) ---- */
 var menuGo=walk("menu-stage");
 var settleRatings={};
-function itemRow(it){
+function itemRow(it, note){
   var row=document.createElement("div"); row.className="m-item";
   var line=document.createElement("div"); line.className="m-line";
   var name=document.createElement("span"); name.className="m-name"; name.textContent=it.name;
   var dots=document.createElement("span"); dots.className="m-dots";
   var cost=document.createElement("span"); cost.className="m-cost"+(it.cost===0?" free":""); cost.textContent=it.cost+"⚡";
   line.appendChild(name); line.appendChild(dots); line.appendChild(cost);
-  var desc=document.createElement("p"); desc.className="m-desc"; desc.textContent=it.desc;
+  var desc=document.createElement("p"); desc.className="m-desc";
+  desc.textContent=it.desc+(note? " — "+note : "");
   var meta=document.createElement("div"); meta.className="m-meta";
   (it.tags||[]).forEach(function(t){ var p=document.createElement("span"); p.className="pill"; p.textContent=t; meta.appendChild(p); });
   var btn=document.createElement("button"); btn.className="btn m-order"; btn.textContent="Order";
@@ -1227,7 +1244,12 @@ function renderMenu(){
   var r=menuFor(iso(new Date()), menuRatings());
   $("menu-chef-note").textContent = chefNoteFor(iso(new Date()));
   var specList=$("menu-specials-list"); specList.innerHTML="";
-  r.specials.forEach(function(it){ specList.appendChild(itemRow(it)); });
+  var tonight=triviaTonight(iso(new Date()));
+  r.specials.forEach(function(it){
+    specList.appendChild(itemRow(it, it.id==="trivia"
+      ? "On tonight at "+tonight.map(function(v){return v.pub}).join(" · ")+" ("+tonight[0].time+")"
+      : ""));
+  });
   $("menu-86").textContent = r.eightySix
     ? "86'd today: "+r.eightySix.name+" — chef's judgment. It'll be back."
     : "";
@@ -1613,6 +1635,7 @@ window.RitualsCore={modeFor:modeFor,dailyNotePath:dailyNotePath,blockFor:blockFo
   MENU:MENU,menuFor:menuFor,hashInt:hashInt,menuRatings:menuRatings,recordRating:recordRating,addEveningOrder:addEveningOrder,removeEveningOrder:removeEveningOrder,
   PHRASES:PHRASES,
   chefNoteFor:chefNoteFor,dishById:dishById,CHEF_NOTES:CHEF_NOTES,renderReceipt:renderReceipt,
+  TRIVIA_VENUES:TRIVIA_VENUES,triviaTonight:triviaTonight,
   parseTasks:parseTasks,toggleTaskByIndex:toggleTaskByIndex,openNoteURI:openNoteURI,enterClose:enterClose,
   ensureDailyNote:ensureDailyNote,vaultRead:vaultRead,vaultWrite:vaultWrite,state:state};
 })();

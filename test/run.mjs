@@ -355,8 +355,8 @@ test("menu: same date + same ratings → same specials; different dates rotate; 
 test("menu: low-engagement dish gets 86'd off the specials rotation", async (page) => {
   const r = await page.evaluate(() => {
     const c = window.RitualsCore;
-    const ratings = { trivia: { n: 3, sum: 3 } };   // avg engagement 1.0 → 86'd
-    const m = c.menuFor("2026-09-14", ratings);
+    const ratings = { trivia: { n: 3, sum: 3 } };   // avg engagement 1.0 → 86'd (Tue: trivia eligible)
+    const m = c.menuFor("2026-09-15", ratings);
     return { excluded: !m.specials.some(i => i.id === "trivia"), named: !!(m.eightySix && m.eightySix.id === "trivia") };
   });
   assert.equal(r.excluded, true);
@@ -570,6 +570,40 @@ test("dom: menu shows the chef's note; settling renders a receipt with totals", 
   assert.match(receipt, /Total/);
   assert.ok(receipt.includes("⚡"), "priced lines on the receipt");
   assert.ok(receipt.includes("genuinely genuine"), "house motto on the receipt");
+});
+
+test("trivia: only suggested when a Peckham-area pub is actually running it", async (page) => {
+  const r = await page.evaluate(() => {
+    const c = window.RitualsCore;
+    const isoOf = d => d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+    const mon = c.triviaTonight("2026-09-14");   // Monday
+    const tue = c.triviaTonight("2026-09-15");   // Tuesday
+    let neverMon = true, someTue = false;
+    for (let i = 0; i < 42; i++) {
+      const d = new Date(2026, 8, 1 + i);
+      const iso = isoOf(d);
+      const picks = c.menuFor(iso, {}).specials.map(x => x.id);
+      if (d.getDay() === 1 && picks.includes("trivia")) neverMon = false;
+      if (d.getDay() === 2 && picks.includes("trivia")) someTue = true;
+    }
+    return { mon: mon.length, tue: tue.length, tueVenues: tue.map(v => v.pub), neverMon, someTue };
+  });
+  assert.equal(r.mon, 0, "no trivia Monday");
+  assert.equal(r.tue, 4, "four venues Tuesday");
+  assert.ok(r.tueVenues.includes("The Prince of Peckham"));
+  assert.equal(r.neverMon, true, "trivia never rotates in on Mondays");
+  assert.equal(r.someTue, true, "trivia does rotate in on Tuesdays");
+});
+test("dom: trivia row names the night's venues when it appears", async (page) => {
+  await open(page, { onboarded: "1", vaultName: "Obsidian", folder: "Daily Notes", restBase: "https://127.0.0.1:27124", token: "" });
+  await page.click('nav.seg button[data-mode="menu"]');
+  const triviaDesc = await page.evaluate(() => {
+    const rows = Array.from(document.querySelectorAll("#menu-specials-list .m-item"));
+    const t = rows.find(r => r.querySelector(".m-name").textContent === "Trivia Night");
+    return t ? t.querySelector(".m-desc").textContent : null;
+  });
+  if (triviaDesc !== null) assert.match(triviaDesc, /On tonight at/);
+  // else: gate correctly kept trivia off the board on whatever day this ran
 });
 
 /* ---------- run ---------- */
