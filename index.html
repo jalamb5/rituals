@@ -149,6 +149,8 @@
   .note{background:rgba(224,175,104,.08); border:1px solid rgba(224,175,104,.35); border-radius:10px;
     padding:10px 12px; color:var(--warn); font-size:13.5px; margin:10px 0}
   .stepno{color:var(--dim); font-size:12px; text-transform:uppercase; letter-spacing:1.5px; margin:0 0 2px}
+  .rescue-block{white-space:pre-wrap; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12.5px;
+    background:var(--card2); border:1px solid var(--line); border-radius:10px; padding:12px; margin:8px 0; color:var(--text)}
   footer{color:var(--dim); font-size:12px; text-align:center; padding:12px 0 24px}
   /* rescue element */
   .rescue{
@@ -221,6 +223,17 @@
 </header>
 
 <main>
+  <!-- ======================= PENDING-SAVE RESCUE ======================= -->
+  <section class="view" id="v-pending">
+    <div class="panel on"><div class="inner">
+      <p class="stepno">Rituals · unsaved</p>
+      <h2 class="title">One save never got confirmed.</h2>
+      <p class="say" id="pending-say"></p>
+      <div class="status" id="pending-status"></div>
+      <div class="actions" id="pending-actions"></div>
+    </div></div>
+  </section>
+
   <!-- ======================= ONBOARDING ======================= -->
   <section class="view" id="v-onboard">
     <div class="panel on"><div class="inner">
@@ -730,16 +743,23 @@ function blockFor(kind, d){
 function oneLine(x){ return String(x||"").replace(/\s*\n\s*/g," ").trim() }
 
 function upsertInContent(content, name, block){
-  var marker = "## "+name;
-  var idx = content.indexOf(marker);
+  // Match the section heading at ANY level (#, ##, ###) so a hand-edited
+  // "# Evening" is replaced (normalised to ##) instead of duplicated.
+  // 2026-09-16: Monday's note had "# Evening" (H1) — the app writes "## Evening".
+  var re = new RegExp("^#{1,3} "+name.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\s*$","m");
+  var m = re.exec(content||"");
+  var idx = m ? m.index : -1;
   var out;
   if (idx===-1){
     var base = content.replace(/\s*$/,"");
     out = (base? base+"\n\n":"") + block;
   } else {
-    var rest = content.slice(idx+marker.length);
-    var m = rest.search(/\n(#{1,3}) /);
-    var end = m===-1 ? content.length : idx+marker.length+m+1;
+    // rest starts at the newline that ends the heading line
+    var lineEnd = content.indexOf("\n", idx);
+    if (lineEnd===-1) lineEnd=content.length;
+    var rest = content.slice(lineEnd);
+    var m2 = rest.search(/\n(#{1,3}) /);
+    var end = m2===-1 ? content.length : lineEnd+m2+1;
     var pre = content.slice(0, idx).replace(/\s*$/,"");
     var post = content.slice(end).replace(/^\s*\n*/,"");
     out = (pre? pre+"\n\n":"") + block.trimEnd();
@@ -760,10 +780,11 @@ function assertNoteSafe(original, merged, sectionName){
   if (!original.trim()) return "original note read as empty — refusing to overwrite";
   if (merged.length < original.length - 4000) return "merge would shrink the note";
   var missing=null;
+  var reSection=new RegExp("^#{1,3} "+sectionName.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\s*$");
   original.split("\n").forEach(function(line){
     var t=line.trim();
     if (!/^#{1,3} /.test(t)) return;
-    if (sectionName && t==="## "+sectionName) return;
+    if (sectionName && reSection.test(t)) return;
     if (merged.indexOf(t)===-1 && missing===null) missing=t;
   });
   return missing ? "merge dropped section: "+missing : null;
@@ -804,9 +825,12 @@ function parseOpenLoops(content){
   var res={carry:[],open:""};
   var idx=content.indexOf("## Shutdown");
   if (idx===-1) return res;
-  var end=content.indexOf("\n## ",idx+10); if(end===-1) end=content.length;
+  // Boundary: the NEXT heading at any level (#, ##, ###) ends the Shutdown block.
+  // 2026-09-16: an H1 "# Evening" section must not be swallowed into the block.
+  var m = content.slice(idx+10).search(/\n#{1,3} /);
+  var end = m===-1 ? content.length : idx+10+m;
   var blk=content.slice(idx,end);
-  var m=/OpenLoop:: ?(.*)/.exec(blk); if(m) res.open=stripInline(m[1]);
+  var mo=/OpenLoop:: ?(.*)/.exec(blk); if(mo) res.open=stripInline(mo[1]);
   var mc=/Carryover:: ?(.*)/.exec(blk); if(mc){
     res.carry=stripInline(mc[1]).split(",").map(function(x){return x.trim()}).filter(Boolean);
   }
@@ -1027,6 +1051,26 @@ function state(){ try{ var raw=store.get("rituals:state"); return raw?JSON.parse
 function setState(k,v){ var s=state(); s[k]=v; store.set("rituals:state",JSON.stringify(s)); }
 function todayState(dateISO){ return state()[dateISO]||{} }
 function setToday(part,val){ var s=state(); var k=iso(new Date()); s[k]=s[k]||{}; s[k][part]=val; store.set("rituals:state",JSON.stringify(s)); }
+/* Pending-save rescue (2026-09-16): every log that cannot be CONFIRMED written
+   is kept in rituals:pending (kind, dateISO, block, at) until the user confirms
+   it landed or a verified REST write clears it. This is what makes a dropped
+   deep link recoverable next time the app opens — Tuesday's missing Evening. */
+function pendingSave(kind, dateISO, block){
+  store.set("rituals:pending", JSON.stringify({kind:kind, dateISO:dateISO, block:block, at:Date.now()}));
+}
+function pendingGet(){
+  try{ return JSON.parse(store.get("rituals:pending")||"null"); }catch(e){ return null; }
+}
+function pendingClear(){ store.del("rituals:pending"); }
+function setForDate(dateISO, part, val){
+  var s=state(); s[dateISO]=s[dateISO]||{}; s[dateISO][part]=val;
+  store.set("rituals:state",JSON.stringify(s));
+}
+function markLogged(kind, dateISO){
+  setForDate(dateISO, kind+"Logged", "1");
+  setForDate(dateISO, "phase", null);
+  pendingClear();
+}
 
 /* -------- Obsidian REST (Tier 1). Loopback https with plain-http fallback. --------
    The plugin serves HTTPS on 27124 (self-signed cert) and, if enabled, plain HTTP
@@ -1136,7 +1180,7 @@ var cfg=settings();
 var SPEECH_OK=false; try{ SPEECH_OK = "speechSynthesis" in window; }catch(e){}
 
 function show(id){
-  ["v-rise","v-menu","v-close","v-shutdown","v-settings","v-onboard","v-scaries"].forEach(function(v){
+  ["v-rise","v-menu","v-close","v-shutdown","v-settings","v-onboard","v-scaries","v-pending"].forEach(function(v){
     var el=document.getElementById(v); if(el) el.classList.toggle("active", v===id);
   });
 }
@@ -1337,6 +1381,7 @@ function renderCheck(){
   var d=todayState(iso(new Date()));
   var orders=d.eveningOrders||[];
   var settled=d.eveningSettled==="1";
+  var logged=d.eveningLogged==="1";
   var box=$("menu-check"); box.innerHTML="";
   var btn=$("menu-settle");
   btn.style.opacity="";
@@ -1346,8 +1391,11 @@ function renderCheck(){
     return;
   }
   btn.disabled=false;
-  btn.textContent = settled ? "Check settled — logged ✓" : "Settle the check ("+orders.length+")";
-  btn.style.opacity = settled ? ".6" : "";
+  // Honest state: settled locally ≠ confirmed in Obsidian (2026-09-16).
+  btn.textContent = logged ? "Check settled — logged ✓"
+    : settled ? "Check settled — save pending (tap to retry)"
+    : "Settle the check ("+orders.length+")";
+  btn.style.opacity = logged ? ".6" : "";
   orders.forEach(function(o,i){
     var row=document.createElement("div"); row.className="check-item";
     var name=document.createElement("span"); name.textContent=o.item;
@@ -1553,9 +1601,14 @@ function statusEl(kind){
     : "sh-status";
   return $(id);
 }
+function hasSection(content, name){
+  var re=new RegExp("^#{1,3} "+name.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+"\\s*$","m");
+  return re.test(content||"");
+}
 function logRitual(kind){
   var d=todayState(iso(new Date()));
   var s=settings();
+  var dateISO=iso(new Date());
   var block = kind==="rise"
     ? blockFor("rise",{head:d.head,oneThing:d.oneThing,lookingForward:d.lookingForward,mood:d.mood,phrase:PHRASES.rise})
     : kind==="scaries"
@@ -1565,6 +1618,9 @@ function logRitual(kind){
         : kind==="evening"
           ? blockFor("evening",{orders:d.eveningOrders||[]})
           : blockFor("shutdown",{open:d.open,wentRight:d.wentRight,carryover:d.carryover,mood:d.mood,phrase:PHRASES.shutdown});
+  // The block is kept from the start (2026-09-16): if any step below fails the
+  // save is NOT lost — it rides in rituals:pending until confirmed or re-sent.
+  pendingSave(kind, dateISO, block);
   statusEl(kind).textContent="Contacting Obsidian…";
   setToday("phase",kind);
   (async function(){
@@ -1572,7 +1628,7 @@ function logRitual(kind){
       var s2=settings();
       if (!s2.token){
         var el0=statusEl(kind); el0.className="status err";
-        el0.textContent="REST API token not set — but you can still log by opening Obsidian:";
+        el0.textContent="REST API token not set — open Obsidian to save this. It's kept here until you confirm it's in the note:";
         showLogButtons(kind, block);
         return;
       }
@@ -1580,7 +1636,7 @@ function logRitual(kind){
       // network error, so we can't reliably tell "cert not trusted" from "Obsidian
       // closed". The fallback helpers retry over plain HTTP (27123) automatically;
       // if BOTH are unreachable it's genuinely down and we say so clearly.
-      var res=await ensureDailyNote(s2, iso(new Date()));
+      var res=await ensureDailyNote(s2, dateISO);
       if (res.content===null){
         statusEl(kind).className="status err";
         statusEl(kind).textContent="Couldn't reach Obsidian to create today's note. Use the link below instead.";
@@ -1598,25 +1654,41 @@ function logRitual(kind){
         showLogButtons(kind, block);
         return;
       }
-      await vaultWrite(s, dailyNotePath(iso(new Date()), s.folder), content);
+      var path=dailyNotePath(dateISO, s.folder);
+      await vaultWrite(s, path, content);
+      // Read-back verification: only a CONFIRMED write is a success. The note is
+      // re-read and the section must actually be there before we celebrate —
+      // a 200 PUT that didn't land is treated as a failure, not a win.
+      var verify=await vaultRead(s, path);
+      if (verify===null || !hasSection(verify, sectionName)) throw new Error("write not confirmed by read-back");
       var st=statusEl(kind); st.className="status ok";
-      st.textContent="Logged to "+(s.folder)+"/"+iso(new Date())+".md (Obsidian Sync will carry it).";
-      setToday(kind+"Logged","1"); setToday("phase",null);
-      if (kind==="rise") riseGo(6);
-      else if (kind==="scaries") scariesGo(6);
-      else if (kind==="close") closeGo(2);
-      else if (kind==="evening"){ renderReceipt(); $("menu-done-say").textContent="Check settled and logged — bon appétit."; menuGo(2); }
-      else { $("sh-carry-hint").textContent = (d.carryover||[]).length? "Carrying "+d.carryover.length+" to tomorrow's Rise: “"+d.carryover.join(" · ")+"”" : ""; shutdownGo(4); }
+      st.textContent="Logged to "+s.folder+"/"+dateISO+".md (verified in Obsidian).";
+      markLogged(kind, dateISO);
+      advanceAfterLog(kind, false);
     }catch(err){
       // Browsers block a page served from the internet (like the hosted ritual.*)
       // from reaching Obsidian on your own machine — Chrome's Private Network
       // Access rule. Nothing local can change that; the deep link always works.
-      // So present it calmly as the normal path, not as an alarming error.
-      var el=statusEl(kind); el.className="status";
-      el.textContent="Open in Obsidian to save this — it writes the note directly.";
+      // The block is safe in rituals:pending — nothing is lost, just unconfirmed.
+      var el=statusEl(kind); el.className="status err";
+      el.textContent="Couldn't save automatically — your block is kept safe here. Open Obsidian to finish, then tap “It's saved”.";
       showLogButtons(kind, block);
     }
   })();
+}
+function advanceAfterLog(kind, viaDeepLink){
+  if (kind==="rise") riseGo(6);
+  else if (kind==="scaries") scariesGo(6);
+  else if (kind==="close") closeGo(2);
+  else if (kind==="evening"){
+    renderReceipt();
+    $("menu-done-say").textContent = viaDeepLink ? "Check saved — bon appétit." : "Check settled and logged — bon appétit.";
+    menuGo(2);
+  } else {
+    var d=todayState(iso(new Date()));
+    $("sh-carry-hint").textContent = (d.carryover||[]).length? "Carrying "+d.carryover.length+" to tomorrow's Rise: “"+d.carryover.join(" · ")+"”" : "";
+    shutdownGo(4);
+  }
 }
 /* Offer both a deep-link-to-Obsidian button and the copy fallback. */
 function showLogButtons(kind, block){
@@ -1629,21 +1701,28 @@ function showLogButtons(kind, block){
   row.appendChild(link); row.appendChild(cp);
   el.appendChild(row);
 }
-/* Build an Obsidian deep-link URI that appends the block to today's daily note.
+/* Build an Obsidian deep-link URI that appends the block to a daily note.
    Works on desktop AND mobile (no REST plugin needed) — the same mechanism the
-   original Rise/Shutdown apps used. Returns null if no vault is set. */
-function deepLinkURI(s, kind, block){
+   original Rise/Shutdown apps used. dateISO defaults to today (rescues pass the
+   original date). Returns null if no vault is set. */
+function deepLinkURI(s, kind, block, dateISO){
   if (!s.vaultName) return null;
-  var path = (s.folder||"Daily Notes")+"/"+iso(new Date());
+  dateISO = dateISO || iso(new Date());
+  var path = (s.folder||"Daily Notes")+"/"+dateISO;
   return "obsidian://new?vault="+encodeURIComponent(s.vaultName)
     +"&file="+encodeURIComponent(path)
     +"&append=true"
     +"&content="+encodeURIComponent("\n"+block+"\n");
 }
-/* Log via deep link: hand the whole note over to Obsidian to create/append. */
-function logViaDeepLink(kind, block){
+/* Log via deep link: hand the whole note over to Obsidian to create/append.
+   The save is NOT declared done here — the block stays in rituals:pending until
+   the user confirms it landed (“It's saved”) or a later verified REST write
+   clears it. Tuesday's loss was exactly this: the app claimed success the moment
+   the URI fired and never checked whether the append actually happened. */
+function logViaDeepLink(kind, block, dateISO){
   var s=settings();
-  var uri=deepLinkURI(s, kind, block);
+  dateISO = dateISO || iso(new Date());
+  var uri=deepLinkURI(s, kind, block, dateISO);
   var el=statusEl(kind);
   if (!uri){
     el.className="status err";
@@ -1651,15 +1730,25 @@ function logViaDeepLink(kind, block){
     showCopyFallback(kind, block);
     return;
   }
+  pendingSave(kind, dateISO, block);
   window.location.href=uri;
-  setToday(kind+"Logged","1"); setToday("phase",null);
-  el.className="status ok";
-  el.textContent="Opened Obsidian to append — confirm there and the note is saved.";
-  if (kind==="rise") riseGo(6);
-  else if (kind==="scaries") scariesGo(6);
-  else if (kind==="close") closeGo(2);
-  else if (kind==="evening"){ renderReceipt(); $("menu-done-say").textContent="Opened Obsidian to append your check — confirm there and it's saved."; menuGo(2); }
-  else shutdownGo(4);
+  el.className="status";
+  el.textContent="Opened Obsidian to append. If the block is in the note, tap “It's saved” — it's kept here until you do.";
+  var row=document.createElement("div"); row.className="actions"; row.style.marginTop="8px";
+  var yes=document.createElement("button"); yes.className="btn primary"; yes.textContent="It's saved ✓";
+  yes.onclick=function(){
+    markLogged(kind, dateISO);
+    el.className="status ok";
+    el.textContent="Confirmed — logged to "+s.folder+"/"+dateISO+".md.";
+    row.style.display="none";
+    advanceAfterLog(kind, true);
+  };
+  var retry=document.createElement("button"); retry.className="btn"; retry.textContent="Open again";
+  retry.onclick=function(){ window.location.href=uri; };
+  var cp=document.createElement("button"); cp.className="btn"; cp.textContent="Copy block";
+  cp.onclick=function(){ navigator.clipboard&&navigator.clipboard.writeText(block).then(function(){cp.textContent="Copied ✓"}); };
+  row.appendChild(yes); row.appendChild(retry); row.appendChild(cp);
+  el.appendChild(row);
 }
 function showCopyFallback(kind, block){
   var el=statusEl(kind);
@@ -1728,6 +1817,14 @@ $("on-save").onclick=function(){
 function boot(){
   cfg=settings();
   if (cfg.onboarded!=="1"){ show("v-onboard"); return; }
+  // Pending-save rescue (2026-09-16): if a log was never CONFIRMED in Obsidian,
+  // offer it back before anything else. Tuesday's missing Evening would have
+  // been recovered here the next morning.
+  var p=pendingGet();
+  if (p && p.block){
+    showPendingRescue(p);
+    return;
+  }
   fillSettingsForm();
   show("v-rise");
   tick();
@@ -1742,6 +1839,33 @@ function boot(){
       navigator.serviceWorker.register("./sw.js").catch(function(){});
   }catch(e){}
 }
+function showPendingRescue(p){
+  var labels={rise:"Rise", shutdown:"Shutdown", evening:"Evening check", close:"Close-the-loop", scaries:"Don't Panic"};
+  var say=$("pending-say");
+  say.textContent = "“"+p.kind+"” from "+p.dateISO+" never got confirmed in Obsidian — so it's been kept here instead of being silently lost. Open Obsidian to append it, or confirm it's already there and clear this.";
+  var el=$("pending-status"); el.className="status";
+  el.innerHTML="";
+  var pre=document.createElement("pre"); pre.className="rescue-block"; pre.textContent=p.block;
+  el.appendChild(pre);
+  var acts=$("pending-actions"); acts.innerHTML="";
+  var open=document.createElement("button"); open.className="btn primary"; open.textContent="Open in Obsidian";
+  open.onclick=function(){ logViaDeepLink(p.kind, p.block, p.dateISO); };
+  var yes=document.createElement("button"); yes.className="btn"; yes.textContent="It's saved ✓";
+  yes.onclick=function(){
+    markLogged(p.kind, p.dateISO);
+    $("pending-say").textContent="Cleared — nothing lost. Carry on.";
+    acts.innerHTML="";
+    var go=document.createElement("button"); go.className="btn primary"; go.textContent="Continue";
+    go.onclick=function(){ location.reload(); };
+    acts.appendChild(go);
+  };
+  var cp=document.createElement("button"); cp.className="btn"; cp.textContent="Copy block";
+  cp.onclick=function(){ navigator.clipboard&&navigator.clipboard.writeText(p.block).then(function(){cp.textContent="Copied ✓"}); };
+  var drop=document.createElement("button"); drop.className="btn ghost"; drop.textContent="Discard";
+  drop.onclick=function(){ if(confirm("Discard the unsaved "+(labels[p.kind]||p.kind)+" from "+p.dateISO+"? It can't be recovered.")){ pendingClear(); location.reload(); } };
+  acts.appendChild(open); acts.appendChild(yes); acts.appendChild(cp); acts.appendChild(drop);
+  show("v-pending");
+}
 document.addEventListener("DOMContentLoaded", boot);
 
 /* expose core for tests */
@@ -1754,8 +1878,10 @@ window.RitualsCore={modeFor:modeFor,dailyNotePath:dailyNotePath,blockFor:blockFo
   TRIVIA_VENUES:TRIVIA_VENUES,triviaTonight:triviaTonight,
   offmenuLog:offmenuLog,logOffmenuOrder:logOffmenuOrder,offmenuPatterns:offmenuPatterns,
   parseTasks:parseTasks,toggleTaskByIndex:toggleTaskByIndex,openNoteURI:openNoteURI,enterClose:enterClose,
-  assertNoteSafe:assertNoteSafe,safeWrite:safeWrite,
-  ensureDailyNote:ensureDailyNote,vaultRead:vaultRead,vaultWrite:vaultWrite,state:state};
+  assertNoteSafe:assertNoteSafe,safeWrite:safeWrite,hasSection:hasSection,
+  ensureDailyNote:ensureDailyNote,vaultRead:vaultRead,vaultWrite:vaultWrite,state:state,
+  pendingSave:pendingSave,pendingGet:pendingGet,pendingClear:pendingClear,markLogged:markLogged,
+  setForDate:setForDate,deepLinkURI:deepLinkURI};
 })();
 </script>
 </body>

@@ -290,6 +290,41 @@ Testing note: the Playwright E2E must load the app from a **local** origin (it d
 pass and hide this. The E2E writes to a scratch `_rituals-e2e/` folder, never the
 real `Daily Notes/` (the vault forbids agent prose in daily notes).
 
+## Save integrity — verify-then-celebrate (2026-09-16)
+
+**Problem found in the wild:** Tuesday 15 Sep's Evening check never reached the
+daily note. The settle flow marked the check "logged ✓" the moment it *attempted*
+the save — before Obsidian had confirmed anything. On the hosted origin the REST
+attempt always fails (PNA, below), so every save depended on the deep-link
+hand-off, and a silently dropped `obsidian://` URI lost the block while the app
+claimed success.
+
+**Rules now (all save paths, all rituals):**
+
+- **A save is only "logged" when verified.** The REST path re-reads the note
+  after writing and requires the section heading to actually be there
+  (`hasSection`, any heading level). A 200 that didn't land = failure, not win.
+- **Every unverified save rides in `rituals:pending`** (`pendingSave/pendingGet/
+  pendingClear`) — kind, date, and the full block. Nothing is lost on a dropped
+  deep link; it is *unconfirmed*, and the block survives in localStorage.
+- **The deep link no longer claims success.** It fires the URI, keeps the block
+  pending, and asks the user to confirm ("It's saved ✓"). Marking logged clears
+  the pending block; a later verified REST write does too.
+- **Boot-time rescue.** If a pending block exists when the app opens (e.g. the
+  next morning after a dropped link), the rescue view offers: open in Obsidian
+  (appending to the *original* date, not today), copy, "It's saved ✓" (confirm),
+  or discard (explicit confirm). Tuesday's loss would have been recovered here.
+- **Honest UI state.** The settle button distinguishes "Check settled — logged ✓"
+  from "Check settled — save pending (tap to retry)". Local settle ≠ confirmed
+  save.
+
+**Heading tolerance.** Monday's note carried a hand-made `# Evening` (H1) while
+the app writes `## Evening`. `upsertInContent` now matches the section at any
+heading level (normalising to the app's `##` on rewrite), `assertNoteSafe` skips
+the replaced section regardless of level, and `parseOpenLoops` treats any
+heading (including H1) as the end of the Shutdown block — so a stray `# Evening`
+can't be swallowed as carryover or duplicated on the next write.
+
 ## Reviews are not a Rituals concern (decided 2026-09-11)
 
 **Supersedes the decision, made earlier the same day, to absorb Bingo into Rituals.**

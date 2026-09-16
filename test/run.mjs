@@ -697,6 +697,100 @@ test("write-safety: heading loss is refused, replacement of one section passes",
   assert.equal(r.keepWork, true);
   assert.equal(r.droppedRefused, true, "note replaced by a single block refuses");
 });
+test("write-safety: H1 '# Evening' is replaced (normalised) not duplicated — Monday's note shape", async (page) => {
+  const r = await page.evaluate(() => {
+    const c = window.RitualsCore;
+    const note = "# Summary:: x\n\n## Work\nstuff\n\n# Evening\n\nEvening:: Walk with Henry\nEnergy:: 2/5\n";
+    const block = c.blockFor("evening", { orders: [{ item: "Walk with Henry", energy: 2, engage: 5 }] });
+    const merged = c.upsertInContent(note, "Evening", block);
+    const risk = c.assertNoteSafe(note, merged, "Evening");
+    return {
+      replaced: !/^# Evening$/m.test(merged),
+      hasH2: merged.includes("## Evening"),
+      count: (merged.match(/^#{1,3} Evening$/m) || []).length,
+      workKept: merged.includes("## Work"),
+      risk
+    };
+  });
+  assert.equal(r.replaced, true, "H1 section replaced");
+  assert.equal(r.hasH2, true, "normalised to H2");
+  assert.equal(r.count, 1, "exactly one Evening section");
+  assert.equal(r.workKept, true, "siblings untouched");
+  assert.equal(r.risk, null, "H1->H2 replacement passes the guard");
+});
+test("write-safety: parseOpenLoops terminates Shutdown at an H1 boundary", async (page) => {
+  const r = await page.evaluate(() => {
+    const c = window.RitualsCore;
+    const note = "# Summary:: x\n\n## Shutdown\n\nOpenLoop:: one, two\nCarryover:: one, two\n\n# Evening\n\nEvening:: Sofa + Show\n";
+    const res = c.parseOpenLoops(note);
+    return { open: res.open, carry: res.carry };
+  });
+  assert.equal(r.open, "one, two");
+  assert.deepEqual(r.carry, ["one", "two"]);
+});
+test("save-integrity: pending block survives until confirmed; markLogged clears it", async (page) => {
+  const r = await page.evaluate(() => {
+    const c = window.RitualsCore;
+    c.store.del("rituals:pending"); c.store.del("rituals:state");
+    const block = c.blockFor("evening", { orders: [{ item: "Walk with Henry", engage: 4 }] });
+    c.pendingSave("evening", "2026-09-15", block);
+    const saved = c.pendingGet();
+    c.markLogged("evening", "2026-09-15");
+    const cleared = c.pendingGet();
+    const logged = c.state()["2026-09-15"] && c.state()["2026-09-15"].eveningLogged;
+    return { kind: saved.kind, date: saved.dateISO, hasBlock: saved.block === block, cleared, logged };
+  });
+  assert.equal(r.kind, "evening");
+  assert.equal(r.date, "2026-09-15");
+  assert.equal(r.hasBlock, true);
+  assert.equal(r.cleared, null, "confirm clears the pending block");
+  assert.equal(r.logged, "1", "confirm marks the day logged");
+});
+test("save-integrity: deepLinkURI appends to the rescued date, not today", async (page) => {
+  const r = await page.evaluate(() => {
+    const c = window.RitualsCore;
+    const uri = c.deepLinkURI({ vaultName: "Obsidian" }, "evening", "## Evening\n\nEvening:: x\n", "2026-09-15");
+    return uri;
+  });
+  assert.ok(r.startsWith("obsidian://new?vault=Obsidian&file=Daily%20Notes%2F2026-09-15&append=true&content="));
+  assert.ok(!r.includes("2026-09-16"), "not today's date");
+});
+test("save-integrity: hasSection matches any heading level", async (page) => {
+  const r = await page.evaluate(() => {
+    const c = window.RitualsCore;
+    return {
+      h1: c.hasSection("# Evening\n\nEvening:: x\n", "Evening"),
+      h2: c.hasSection("## Evening\n\nEvening:: x\n", "Evening"),
+      h3: c.hasSection("### Evening\n", "Evening"),
+      none: c.hasSection("## Work\n", "Evening"),
+      special: c.hasSection("## Don't Panic\n", "Don't Panic")
+    };
+  });
+  assert.deepEqual(r, { h1: true, h2: true, h3: true, none: false, special: true });
+});
+test("save-integrity: settle button shows honest pending state, not a false ✓", async (page) => {
+  await open(page, { onboarded: "1", vaultName: "Obsidian", folder: "Daily Notes", restBase: "https://127.0.0.1:27124", token: "" });
+  await page.click('nav.seg button[data-mode="menu"]');
+  await page.click("#menu-sections .m-order");
+  await page.click("#menu-house .m-order");
+  await page.click("#menu-settle");
+  await page.click("#menu-settle-send");
+  await page.waitForSelector("#menu-status-confirm .actions button", { state: "visible" });
+  const state = await page.evaluate(() => {
+    const c = window.RitualsCore, d = c.state()[c.iso(new Date())];
+    const btn = document.getElementById("menu-settle");
+    return {
+      btnText: btn.textContent,
+      pending: !!(c.pendingGet() && c.pendingGet().block),
+      settled: d.eveningSettled === "1",
+      logged: d.eveningLogged
+    };
+  });
+  assert.match(state.btnText, /save pending/i, "button admits the save is pending");
+  assert.equal(state.pending, true, "block kept in pending after failed REST (no token)");
+  assert.equal(state.settled, true, "check settled locally");
+  assert.equal(state.logged, undefined, "NOT marked logged — no false ✓");
+});
 
 /* ---------- run ---------- */
 const PORT = 8734;

@@ -31,8 +31,12 @@ with Templater). Rituals **never fabricates a daily note**: if the file is missi
 triggers Obsidian's own daily-note command over the Local REST API, then appends.
 
 - **Tier 1 (primary):** Obsidian **Local REST API** plugin — read, create-via-command,
-  append. Requires the plugin + API key on each device.
-- **Tier 0 (fallback):** copy/download the block when REST is unavailable.
+  append, then **read back and verify the section landed** before showing success.
+  Requires the plugin + API key on each device.
+- **Tier 0 (fallback):** deep link / copy. The block is kept in `rituals:pending`
+  until confirmed ("It's saved ✓") or a verified REST write clears it; if the app
+  reopens with an unconfirmed block it offers a rescue (re-open Obsidian against
+  the original date, copy, confirm, or discard). No save is ever silently dropped.
 
 Appended block (idempotent — same-day rerun replaces the section):
 
