@@ -9,9 +9,9 @@
 Rituals should be **easy and fun to use**, help Justin **set himself up for
 success each morning** (Rise) and **truly turn off the work brain at night**
 (Shutdown). It deliberately owns only the *moments and cadence*; Obsidian owns
-tasks (Tasks plugin), task closure, and the journal record — the end-of-work
-Close window deep-links into today's daily note where the ticking happens.
-No notifications, no accounts, no backend.
+tasks (Tasks plugin), task closure, and the journal record. Close-the-loop was
+**cut 2026-09-16** — it was a button that opened Obsidian, and Shutdown already
+owns the end of the work day (see below). No notifications, no accounts, no backend.
 
 ## The two rituals & their evidence
 
@@ -191,20 +191,16 @@ menu honest and offline — no network, deterministic tests.
 read the vault and never plans tomorrow (that stays Shutdown → Rise's carry).
 It is on-demand like Don't Panic; it does not set a daily phase.
 
-### Close the loop (end of work)
-The end-of-work window (weekday `spStart`–`shutdownStart`, dusk theme) now hands
-the work back to Obsidian directly: a deep link into today's daily note where
-the Tasks plugin's checkboxes live, plus a silent REST enhancement that lists
-today's open `- [ ]` lines from that note for tap-to-tick (write-back is a
-plain `[ ]`→`[x]` swap — Tasks-plugin format agnostic). Closing logs a `## Close`
-bookend block (`ClosedAt:: HH:MM`) so every moment lands in the daily note.
-
-**Mobile (2026-09-14 requirement):** the deep link (`obsidian://open?…`) is the
-primary path and works on desktop and mobile — Obsidian registers the scheme on
-both. The REST task list is explicitly a *local enhancement*: the Local REST API
-plugin is unreliable from phones (adb-reverse / LAN + cert dance), so when REST
-isn't reachable the app says so calmly and the deep link remains the whole answer
-— same pattern as the ritual-log fallback.
+### Close the loop — CUT (2026-09-16)
+The end-of-work window (weekday `spStart`–`shutdownStart`, dusk theme) was a deep
+link into today's daily note for Tasks-plugin ticking, plus a REST task list and
+a `## Close` bookend block. **Removed** because it was a button that opened
+Obsidian and nothing consumed its output: zero `## Close` blocks were ever
+written in real use, the REST task list is dead on the hosted origin (PNA), and
+Shutdown already owns the end of the work day. The 16:00–20:00 weekday window
+is now the front door (`off`), matching weekends. Task ticking stays in Obsidian
+where it belongs; `spStart` setting removed. Reverting is a git checkout of the
+pre-cut commit — the code was a self-contained view + 70 lines of JS.
 
 ## Don't Panic (rescue element) — evidence base
 
@@ -254,8 +250,7 @@ Fixed with three layers, all still testable in `assertNoteSafe`:
    vanished from the result. Refusal writes nothing and offers the deep link —
    the note is untouched, and the incident's exact shape ("note became just the
    block") is now impossible.
-3. **Every write path uses it** — all ritual logs (`logRitual`) and the
-   Close-the-loop task tick (`toggleCloseTask`).
+3. **Every write path uses it** — all ritual logs (`logRitual`).
 
 ## Write mechanism & the browser constraint (important)
 
