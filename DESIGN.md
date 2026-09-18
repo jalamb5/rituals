@@ -28,6 +28,13 @@ laptop) still falls back to the REST read when it's available locally; when the
 carry list is genuinely empty the panel is now skipped (Begin goes straight to
 the brain-dump).
 
+**Morning mood (2026-09-16):** the Rise phrase panel carries an optional 1–5
+mood picker (same scale as Shutdown), written as `Mood::` in the Rise block.
+Shutdown already captured the evening reading; the pair gives a morning→evening
+mood spread for the same day — the day's arc at a glance (peak-end contrast:
+morning anticipation vs evening recovery). Purely optional, never a score; the
+same "note to yourself" framing as Shutdown's.
+
 **Strongest-supported mechanism is the "one thing" step.** Implementation
 intentions (if-then planning) have the best evidence of anything in the app —
 Gollwitzer & Sheeran (2006) meta-analysis, 94 studies, d≈.65. Two boundary

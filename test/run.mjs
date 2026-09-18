@@ -233,6 +233,31 @@ test("dom: carry-in panel shows items when carryover exists; skipped when empty"
   });
   assert.equal(noCarry, "2", "empty carry → Begin skips straight to head step");
 });
+test("dom: rise mood picker sets today's mood and survives re-run", async (page) => {
+  await open(page, { onboarded: "1", vaultName: "Obsidian", folder: "Daily Notes", restBase: "https://127.0.0.1:27124", token: "" });
+  await page.click('nav.seg button[data-mode="rise"]');
+  // mood picker is on the phrase panel (step 5)
+  await page.evaluate(() => { const c = window.RitualsCore; document.querySelectorAll("#rise-flow .panel").forEach((p,i)=>p.classList.toggle("on", i===5)); });
+  await page.click('#rs-mood button[data-m="4"]');
+  const set1 = await page.evaluate(() => {
+    const d = window.RitualsCore.state()[window.RitualsCore.iso(new Date())] || {};
+    return { mood: d.mood, on: document.querySelector('#rs-mood button[data-m="4"]').classList.contains("on") };
+  });
+  assert.equal(set1.mood, 4, "mood stored in today's state");
+  assert.equal(set1.on, true, "chosen button highlighted");
+  // re-run the flow: selection persists (preselect from state)
+  // (rerun button lives on the done panel; call its handler directly)
+  await page.evaluate(() => document.getElementById("rise-rerun").click());
+  const kept = await page.evaluate(() =>
+    document.querySelector('#rs-mood button[data-m="4"]').classList.contains("on"));
+  assert.equal(kept, true, "preselected on re-run");
+  // block carries the mood through to the note (blockFor path already asserts Mood:: 4)
+  const block = await page.evaluate(() => {
+    const c = window.RitualsCore, d = c.state()[c.iso(new Date())];
+    return c.blockFor("rise", { head: d.head||"", oneThing: d.oneThing||"", lookingForward: d.lookingForward||"", mood: d.mood, phrase: c.PHRASES.rise });
+  });
+  assert.match(block, /Mood:: 4/);
+});
 test("dom: full rise run marks today logged (no REST → copy fallback offered)", async (page) => {
   await open(page, { onboarded: "1", vaultName: "Obsidian", folder: "Daily Notes", restBase: "https://127.0.0.1:27124", token: "tok" });
   await page.click('nav.seg button[data-mode="rise"]');

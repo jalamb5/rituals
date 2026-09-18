@@ -307,6 +307,14 @@
         <blockquote class="phrase" id="rise-phrase"></blockquote>
         <p class="cite">— City Watch motto, <i>Guards! Guards!</i></p>
         <p class="say">Give it one minute of quiet before you open anything. The one thing is already named — let it be the first thing you do.</p>
+        <div class="mood">
+          <p class="say" style="margin-bottom:6px">How does the morning feel? <span class="mood-opt">— optional</span></p>
+          <div class="mood-btns" id="rs-mood" aria-label="How is the morning?">
+            <button data-m="1">1</button><button data-m="2">2</button><button data-m="3">3</button>
+            <button data-m="4">4</button><button data-m="5">5</button>
+          </div>
+          <p class="mood-hint">Same scale as Shutdown — the pair shows how your day turns. It's a note to yourself, not a score.</p>
+        </div>
         <div class="actions">
           <button class="btn primary" id="rise-said">🔊 Said it</button>
           <button class="btn" id="rise-log">Log to Obsidian</button>
@@ -1180,6 +1188,10 @@ function riseStartFlow(){
   var today=iso(new Date()); var d=todayState(today);
   $("rise-greet").textContent = d.greet || (new Date().getHours()<12? "Good morning. Today can wait a minute — let's set the one thing." : "Good day. Let's set the one thing.");
   $("rise-phrase").textContent = PHRASES.rise;
+  // morning mood: preselect today's choice if already picked (re-runs keep it)
+  Array.prototype.forEach.call(document.querySelectorAll("#rs-mood button"),function(b){
+    b.classList.toggle("on", d.mood===+b.dataset.m);
+  });
   // carry-in
   var list=$("rise-carry-list"); list.innerHTML="";
   var carry=(d.carryIn||[]);
@@ -1211,6 +1223,13 @@ $("rise-forward-next").onclick=function(){ setToday("lookingForward",$("rise-for
 $("rise-said").onclick=function(){ say(PHRASES.rise); };
 $("rise-rerun").onclick=function(){ riseStartFlow(); };
 $("rise-log").onclick=function(){ logRitual("rise"); };
+Array.prototype.forEach.call(document.querySelectorAll("#rs-mood button"),function(b){
+  b.onclick=function(){
+    Array.prototype.forEach.call(document.querySelectorAll("#rs-mood button"),function(x){x.classList.remove("on")});
+    b.classList.add("on");
+    setToday("mood",+b.dataset.m);
+  };
+});
 
 /* ---- Shutdown ---- */
 function enterShutdown(){
