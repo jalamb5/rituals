@@ -1196,7 +1196,12 @@ function riseStartFlow(){
   $("rise-head").value=""; $("rise-thing").value=d.oneThing||""; $("rise-forward").value="";
   setToday("phase","rise");
 }
-$("rise-begin").onclick=function(){ riseGo(1); };
+$("rise-begin").onclick=function(){
+  // Skip the carry-in panel when nothing carried over — it was a mandatory
+  // dead step (2026-09-16). Carry items render on panel 1 only when present.
+  var d=todayState(iso(new Date()));
+  riseGo((d.carryIn&&d.carryIn.length)?1:2);
+};
 $("rise-carry-next").onclick=function(){ riseGo(2); };
 $("rise-head-next").onclick=function(){ setToday("head",$("rise-head").value); riseGo(3); };
 $("rise-thing-back").onclick=function(){ riseGo(2); };
@@ -1612,11 +1617,23 @@ function showCopyFallback(kind, block){
   el.appendChild(cp);
 }
 
-/* ---- Carry-in: read yesterday's Shutdown carryover via REST ---- */
+/* ---- Carry-in: yesterday's Shutdown carryover ---- */
+function carryFromState(yiso){
+  var y=todayState(yiso);
+  return (y && y.carryover && y.carryover.length) ? y.carryover.slice() : [];
+}
 async function loadCarryIn(){
-  var s=settings(); if (s.token==="") return;
   var y=new Date(); y.setDate(y.getDate()-1);
   var yiso=iso(y);
+  // 1) Same-device: Shutdown already stored carryover in app state under its
+  //    date (setToday("carryover", …)). No network, works on the hosted origin.
+  //    This was the 2026-09-16 fix: carry-in used to read yesterday's NOTE via
+  //    REST, which is PNA-blocked on the hosted origin — so the panel was
+  //    always empty and it was a dead step every morning.
+  var local=carryFromState(yiso);
+  if (local.length){ setToday("carryIn", local); return; }
+  // 2) Cross-device fallback: read yesterday's note via REST (local origin only).
+  var s=settings(); if (s.token==="") return;
   try{
     var c=await vaultRead(s, dailyNotePath(yiso, s.folder));
     if (c===null) return;
@@ -1731,7 +1748,7 @@ window.RitualsCore={modeFor:modeFor,dailyNotePath:dailyNotePath,blockFor:blockFo
   assertNoteSafe:assertNoteSafe,safeWrite:safeWrite,hasSection:hasSection,
   ensureDailyNote:ensureDailyNote,vaultRead:vaultRead,vaultWrite:vaultWrite,state:state,
   pendingSave:pendingSave,pendingGet:pendingGet,pendingClear:pendingClear,markLogged:markLogged,
-  setForDate:setForDate,deepLinkURI:deepLinkURI};
+  setForDate:setForDate,deepLinkURI:deepLinkURI,carryFromState:carryFromState};
 })();
 </script>
 </body>

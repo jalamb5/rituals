@@ -191,12 +191,53 @@ test("dom: rise flow is startable from the segment and advances", async (page) =
   assert.equal(advanced.introOff, true);
   assert.equal(advanced.count, 1);       // still one panel at a time
 });
+test("carry: carryFromState returns yesterday's Shutdown carryover from app state", async (page) => {
+  const r = await page.evaluate(() => {
+    const c = window.RitualsCore;
+    c.store.del("rituals:state");
+    // yesterday's Shutdown stored carryover in app state (setToday("carryover"))
+    const y = new Date(); y.setDate(y.getDate() - 1);
+    const yiso = c.iso(y);
+    c.setForDate(yiso, "carryover", ["Reply Dan", "Book train"]);
+    return { carried: c.carryFromState(yiso), empty: c.carryFromState("2020-01-01") };
+  });
+  assert.deepEqual(r.carried, ["Reply Dan", "Book train"]);
+  assert.deepEqual(r.empty, []);
+});
+test("dom: carry-in panel shows items when carryover exists; skipped when empty", async (page) => {
+  await open(page, { onboarded: "1", vaultName: "Obsidian", folder: "Daily Notes", restBase: "https://127.0.0.1:27124", token: "" });
+  // with carry-in present: flow starts ON the carry panel with the item (no intro)
+  await page.evaluate(() => {
+    const c = window.RitualsCore, today = c.iso(new Date());
+    c.setForDate(today, "carryIn", ["Reply Dan"]);
+  });
+  await page.click('nav.seg button[data-mode="rise"]');
+  const withCarry = await page.evaluate(() => {
+    const on = Array.from(document.querySelectorAll("#rise-flow .panel")).filter(p => p.classList.contains("on"));
+    const step = on.length ? on[0].dataset.step : null;
+    const items = Array.from(document.querySelectorAll("#rise-carry-list .carry")).map(b => b.textContent);
+    return { step, items };
+  });
+  assert.equal(withCarry.step, "1", "carry panel shown when there is carry");
+  assert.deepEqual(withCarry.items, ["↗ Reply Dan"]);
+  // without carry-in: intro shows, Begin goes straight to the head step
+  await page.evaluate(() => {
+    const c = window.RitualsCore, today = c.iso(new Date());
+    c.setForDate(today, "carryIn", []);
+  });
+  await page.click('nav.seg button[data-mode="rise"]');
+  await page.click("#rise-begin");
+  const noCarry = await page.evaluate(() => {
+    const on = Array.from(document.querySelectorAll("#rise-flow .panel")).filter(p => p.classList.contains("on"));
+    return on.length ? on[0].dataset.step : null;
+  });
+  assert.equal(noCarry, "2", "empty carry → Begin skips straight to head step");
+});
 test("dom: full rise run marks today logged (no REST → copy fallback offered)", async (page) => {
   await open(page, { onboarded: "1", vaultName: "Obsidian", folder: "Daily Notes", restBase: "https://127.0.0.1:27124", token: "tok" });
   await page.click('nav.seg button[data-mode="rise"]');
   await page.click("#rise-begin");
-  // step 1 = carry-in (clean slate) → Continue
-  await page.click("#rise-carry-next");
+  // no carry-in → Begin goes straight to the head step (2026-09-16: no dead carry panel)
   await page.fill("#rise-head", "noise noise");
   await page.click("#rise-head-next");
   await page.fill("#rise-thing", "Ship the scaffold");
@@ -267,7 +308,6 @@ test("dom: log fallback offers an Obsidian deep-link", async (page) => {
   // no token → log buttons (Open in Obsidian + Copy) appear
   await page.click('nav.seg button[data-mode="rise"]');
   await page.click("#rise-begin");
-  await page.click("#rise-carry-next");
   await page.fill("#rise-head", "noise");
   await page.click("#rise-head-next");
   await page.fill("#rise-thing", "The thing");

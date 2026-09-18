@@ -19,6 +19,15 @@ owns the end of the work day (see below). No notifications, no accounts, no back
 Guided 4-step arc: carry-in → brain-dump ("what's already in your head") →
 **one thing** → looking forward → spoken phrase ("Fabricati diem.") → log.
 
+**Carry-in (2026-09-16 fix):** yesterday's Shutdown carryover is read from the
+app's own state (`rituals:state[yesterday].carryover`) — no network, so it works
+on the hosted origin where REST is PNA-blocked. It used to read yesterday's note
+via REST, which is dead on the hosted origin — so the carry panel was always
+empty and a mandatory dead step. Cross-device (shutdown on phone, rise on
+laptop) still falls back to the REST read when it's available locally; when the
+carry list is genuinely empty the panel is now skipped (Begin goes straight to
+the brain-dump).
+
 **Strongest-supported mechanism is the "one thing" step.** Implementation
 intentions (if-then planning) have the best evidence of anything in the app —
 Gollwitzer & Sheeran (2006) meta-analysis, 94 studies, d≈.65. Two boundary
