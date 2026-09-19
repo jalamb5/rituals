@@ -1505,8 +1505,8 @@ function logRitual(kind){
     try{
       var s2=settings();
       if (!s2.token){
-        var el0=statusEl(kind); el0.className="status err";
-        el0.textContent="REST API token not set — open Obsidian to save this. It's kept here until you confirm it's in the note:";
+        var el0=statusEl(kind); el0.className="status";
+        el0.textContent="No REST token set — open Obsidian to save this here (kept until confirmed):";
         showLogButtons(kind, block);
         return;
       }
@@ -1548,8 +1548,9 @@ function logRitual(kind){
       // from reaching Obsidian on your own machine — Chrome's Private Network
       // Access rule. Nothing local can change that; the deep link always works.
       // The block is safe in rituals:pending — nothing is lost, just unconfirmed.
-      var el=statusEl(kind); el.className="status err";
-      el.textContent="Couldn't save automatically — your block is kept safe here. Open Obsidian to finish, then tap “It's saved”.";
+      // This is the NORMAL path on the hosted origin, not an error (DESIGN.md).
+      var el=statusEl(kind); el.className="status";
+      el.textContent="Open Obsidian to save this — the block is kept here until you confirm it's in the note. Tap “It's saved” when it lands.";
       showLogButtons(kind, block);
     }
   })();
