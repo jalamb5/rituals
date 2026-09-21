@@ -336,6 +336,28 @@ the replaced section regardless of level, and `parseOpenLoops` treats any
 heading (including H1) as the end of the Shutdown block — so a stray `# Evening`
 can't be swallowed as carryover or duplicated on the next write.
 
+## Cross-device state sync (2026-09-16)
+
+Rituals can optionally sync state + menu ratings across devices via a
+Cloudflare Worker (KV-store), deployed at `rituals-state.{subdomain}.workers.dev`.
+Configure the Worker URL + API key in Settings.
+
+**What syncs:** the full `rituals:state` blob (per-day carryover, orders, mood,
+logged flags) and `rituals:menuRatings` (the learning loop). State is
+last-write-wins per day; menu ratings accumulate across devices (n+1, sum
++= engage on each rating). This means carry-over from a phone Shutdown is
+available on a laptop Rise, and menu learning benefits from both devices.
+
+**Mechanics:**
+- On boot (`syncPull`): fetch remote state, merge dates missing from local,
+  re-check yesterday's carry-in from merged state.
+- On each confirmed log (`markLogged` → `syncPush`): push full local state
+  + ratings to the worker.
+- Worker accumulates menu ratings (adds n + sum); state is stored as-is
+  per key.
+- No blocker for slow / missing network — fetches are fire-and-forget,
+  localStorage remains the source of truth.
+
 ## Reviews are not a Rituals concern (decided 2026-09-11)
 
 **Supersedes the decision, made earlier the same day, to absorb Bingo into Rituals.**

@@ -592,6 +592,11 @@
         <input type="password" id="set-token">
         <label>Bedtime — Shutdown window starts (24h)</label>
         <input type="text" id="set-shutdownstart" value="20:00">
+        <hr style="border:none;border-top:1px solid var(--line);margin:12px 0">
+        <label>State sync Worker URL</label>
+        <input type="text" id="set-sync-url" placeholder="e.g. https://rituals-state.xxx.workers.dev">
+        <label>State sync API key</label>
+        <input type="password" id="set-sync-key" placeholder="…">
         <div class="actions" style="margin-top:14px">
           <button class="btn primary" id="set-save">Save</button>
           <button class="btn ghost" id="set-reset">Clear everything</button>
@@ -977,7 +982,7 @@ var store={
 };
 var DEFAULTS={
   vaultName:"Obsidian", folder:"Daily Notes", restBase:"https://127.0.0.1:27124", token:"",
-  riseStart:"05:00", shutdownStart:"20:00",
+  riseStart:"05:00", shutdownStart:"20:00", syncWorkerUrl:"", syncWorkerKey:"",
   onboarded:"0"
 };
 /* The three spoken phrases are hard-coded (decided with the principal
@@ -1012,6 +1017,53 @@ function markLogged(kind, dateISO){
   setForDate(dateISO, kind+"Logged", "1");
   setForDate(dateISO, "phase", null);
   pendingClear();
+  syncPush();
+}
+/* ---- Cross-device state sync via Cloudflare Worker ---- */
+function syncPush(){
+  var s=settings();
+  if (!s.syncWorkerUrl || !s.syncWorkerKey) return;
+  fetch(s.syncWorkerUrl, {
+    method:'PUT',
+    headers:{'Content-Type':'application/json','X-Api-Key':s.syncWorkerKey},
+    body:JSON.stringify({state:state(), menuRatings:menuRatings()})
+  }).catch(function(){});
+}
+async function syncPull(){
+  var s=settings();
+  if (!s.syncWorkerUrl || !s.syncWorkerKey) return;
+  try{
+    var r=await fetch(s.syncWorkerUrl, {headers:{'X-Api-Key':s.syncWorkerKey}});
+    if (!r.ok) return;
+    var data=await r.json();
+    if (!data) return;
+    // Merge state: copy dates missing from local (cross-device carryover etc.)
+    if (data.state){
+      var st=state();
+      for (var date in data.state){
+        if (!data.state.hasOwnProperty(date)) continue;
+        if (!st[date] || Object.keys(st[date]).length===0){
+          st[date]=data.state[date];
+        }
+      }
+      store.set("rituals:state",JSON.stringify(st));
+      // After pulling remote state, re-check yesterday's carry-in (cross-device)
+      var y=new Date(); y.setDate(y.getDate()-1);
+      var ycar=carryFromState(iso(y));
+      if (ycar.length) setToday("carryIn", ycar);
+    }
+    // Merge menuRatings: accumulate across devices
+    if (data.menuRatings){
+      var local=menuRatings();
+      for (var id in data.menuRatings){
+        if (!data.menuRatings.hasOwnProperty(id)) continue;
+        var r=data.menuRatings[id];
+        if (local[id]) local[id]={n:local[id].n+r.n, sum:local[id].sum+r.sum};
+        else local[id]=r;
+      }
+      store.set("rituals:menuRatings",JSON.stringify(local));
+    }
+  }catch(e){}
 }
 
 /* -------- Obsidian REST (Tier 1). Loopback https with plain-http fallback. --------
@@ -1679,6 +1731,7 @@ function fillSettingsForm(){
   $("set-vault").value=s.vaultName; $("set-folder").value=s.folder;
   $("set-restbase").value=s.restBase; $("set-token").value=s.token;
   $("set-shutdownstart").value=s.shutdownStart;
+  $("set-sync-url").value=s.syncWorkerUrl; $("set-sync-key").value=s.syncWorkerKey;
   $("on-vault").value=s.vaultName; $("on-folder").value=s.folder;
   $("on-restbase").value=s.restBase; $("on-token").value=s.token;
 }
@@ -1689,6 +1742,8 @@ function persistSettings(){
   s.restBase=$("set-restbase").value.trim()||"https://127.0.0.1:27124";
   s.token=$("set-token").value.trim();
   s.shutdownStart=$("set-shutdownstart").value.trim()||"20:00";
+  s.syncWorkerUrl=$("set-sync-url").value.trim();
+  s.syncWorkerKey=$("set-sync-key").value.trim();
   s.onboarded="1"; saveSettings(s);
 }
 $("set-save").onclick=function(){ persistSettings(); fillSettingsForm(); $("set-status").textContent="Saved."; tick(); };
@@ -1717,6 +1772,7 @@ function boot(){
   fillSettingsForm();
   show("v-rise");
   tick();
+  syncPull();
   loadCarryIn();
   setInterval(tick, 60000);
   var now=new Date(), m=modeFor(now,cfg);
@@ -1768,7 +1824,7 @@ window.RitualsCore={modeFor:modeFor,dailyNotePath:dailyNotePath,blockFor:blockFo
   assertNoteSafe:assertNoteSafe,safeWrite:safeWrite,hasSection:hasSection,
   ensureDailyNote:ensureDailyNote,vaultRead:vaultRead,vaultWrite:vaultWrite,state:state,
   pendingSave:pendingSave,pendingGet:pendingGet,pendingClear:pendingClear,markLogged:markLogged,
-  setForDate:setForDate,deepLinkURI:deepLinkURI,carryFromState:carryFromState};
+  setForDate:setForDate,deepLinkURI:deepLinkURI,carryFromState:carryFromState,syncPush:syncPush,syncPull:syncPull};
 })();
 </script>
 </body>
