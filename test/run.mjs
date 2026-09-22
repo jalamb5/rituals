@@ -93,15 +93,14 @@ test("core: dailyNotePath", async (page) => {
   assert.deepEqual(r, ["Daily Notes/2026-09-07.md", "Daily Notes/2026-09-07.md"]);
 });
 test("core: blockFor rise collapses multi-line + fields", async (page) => {
-  const b = await page.evaluate(() => window.RitualsCore.blockFor("rise", { head: "A\nB", oneThing: "Ship it", lookingForward: "Rain", mood: 4, phrase: "Open the day." }));
+  const b = await page.evaluate(() => window.RitualsCore.blockFor("rise", { head: "A\nB", oneThing: "Ship it", lookingForward: "Rain", mood: 4 }));
   assert.match(b, /^## Rise/);
   assert.match(b, /InHead:: A B/);
   assert.match(b, /OneThing:: Ship it/);
   assert.match(b, /Mood:: 4/);
-  assert.match(b, /Phrase:: "Open the day\."/);
 });
 test("core: blockFor shutdown carries comma list", async (page) => {
-  const b = await page.evaluate(() => window.RitualsCore.blockFor("shutdown", { open: "The launch thing", wentRight: "Walk", carryover: ["Reply Dan", "Book train"], mood: 3, phrase: "Close." }));
+  const b = await page.evaluate(() => window.RitualsCore.blockFor("shutdown", { open: "The launch thing", wentRight: "Walk", carryover: ["Reply Dan", "Book train"], mood: 3 }));
   assert.match(b, /^## Shutdown/);
   assert.match(b, /Carryover:: Reply Dan, Book train/);
   assert.match(b, /OpenLoop:: The launch thing/);

@@ -663,7 +663,6 @@ function blockFor(kind, d){
       "OneThing:: "+oneLine(d.oneThing),
       "LookingForward:: "+oneLine(d.lookingForward),
       d.mood? "Mood:: "+d.mood : "Mood::",
-      "Phrase:: \""+oneLine(d.phrase||"")+"\"",
       ""
     ].join("\n");
   }
@@ -676,7 +675,6 @@ function blockFor(kind, d){
       "WentRight:: "+oneLine(d.wentRight),
       carry.length? "Carryover:: "+carry.join(", ") : "Carryover::",
       d.mood? "Mood:: "+d.mood : "Mood::",
-      "Phrase:: \""+oneLine(d.phrase||"")+"\"",
       ""
     ].join("\n");
   }
@@ -689,7 +687,6 @@ function blockFor(kind, d){
       "Cope:: "+oneLine(d.scCope),
       "FirstMove:: "+oneLine(d.scFirst),
       "Parked:: "+oneLine(d.scPark),
-      "Phrase:: \""+oneLine(d.phrase||"")+"\"",
       ""
     ].join("\n");
   }
@@ -1543,12 +1540,12 @@ function logRitual(kind){
   var s=settings();
   var dateISO=iso(new Date());
   var block = kind==="rise"
-    ? blockFor("rise",{head:d.head,oneThing:d.oneThing,lookingForward:d.lookingForward,mood:d.mood,phrase:PHRASES.rise})
+    ? blockFor("rise",{head:d.head,oneThing:d.oneThing,lookingForward:d.lookingForward,mood:d.mood})
     : kind==="scaries"
-      ? blockFor("scaries",{scDread:d.scDread,scLikely:d.scLikely,scCope:d.scCope,scFirst:d.scFirst,scPark:d.scPark,phrase:PHRASES.scaries})
+      ? blockFor("scaries",{scDread:d.scDread,scLikely:d.scLikely,scCope:d.scCope,scFirst:d.scFirst,scPark:d.scPark})
       : kind==="evening"
         ? blockFor("evening",{orders:d.eveningOrders||[]})
-        : blockFor("shutdown",{open:d.open,wentRight:d.wentRight,carryover:d.carryover,mood:d.mood,phrase:PHRASES.shutdown});
+        : blockFor("shutdown",{open:d.open,wentRight:d.wentRight,carryover:d.carryover,mood:d.mood});
   // The block is kept from the start (2026-09-16): if any step below fails the
   // save is NOT lost — it rides in rituals:pending until confirmed or re-sent.
   pendingSave(kind, dateISO, block);
