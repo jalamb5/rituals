@@ -1078,6 +1078,12 @@ async function syncPull(){
       }
       store.set("rituals:menuRatings",JSON.stringify(local));
     }
+    // Merge menu config from remote curator (me) — overrides hardcoded MENU
+    if (data.menu){
+      if (Array.isArray(data.menu.specials)) MENU.specials = data.menu.specials;
+      if (Array.isArray(data.menu.sections)) MENU.sections = data.menu.sections;
+      if (data.menu.house) MENU.house = data.menu.house;
+    }
   }catch(e){}
 }
 
