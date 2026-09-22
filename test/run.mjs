@@ -485,8 +485,16 @@ test("dom: ordering adds to the check without a modal; settle button counts", as
 test("dom: settling the check rates items, writes ratings into one Evening block", async (page) => {
   await open(page, { onboarded: "1", vaultName: "Obsidian", folder: "Daily Notes", restBase: "https://127.0.0.1:27124", token: "" });
   await page.click('nav.seg button[data-mode="menu"]');
+  // Order the first available section item and the house classic
   await page.click("#menu-sections .m-order");
   await page.click("#menu-house .m-order");
+  const firstId = await page.evaluate(() => {
+    const d = window.RitualsCore.state();
+    const k = window.RitualsCore.iso(new Date());
+    return d[k] && d[k].eveningOrders && d[k].eveningOrders.length > 0
+      ? d[k].eveningOrders[0].id : null;
+  });
+  assert.ok(firstId, "ordered a section item");
   await page.click("#menu-settle");
   const settle = await page.evaluate(() => ({
     onePanel: Array.from(document.querySelectorAll("#menu-stage .panel")).filter(p => p.classList.contains("on")).length,
@@ -507,7 +515,7 @@ test("dom: settling the check rates items, writes ratings into one Evening block
   const settled = await page.evaluate(() => document.getElementById("menu-settle").textContent);
   assert.match(settled, /Check settled/);
   const ratings = await page.evaluate(() => window.RitualsCore.menuRatings());
-  assert.ok(ratings["stretch"], "rated dish's engagement fed the learning loop");
+  assert.ok(ratings[firstId], "rated dish's engagement fed the learning loop");
 });
 
 test("menu: blockFor evening renders multiple orders in one section", async (page) => {

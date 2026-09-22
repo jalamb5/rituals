@@ -946,29 +946,46 @@ function triviaTonight(dateISO){
   return TRIVIA_VENUES.filter(function(v){ return v.day===d.getDay(); });
 }
 /* menuFor(dateISO, ratings) -> { specials:[..2], eightySix:item|null, house, sections }
-   Deterministic for a given date + ratings; specials rotate daily and tilt
-   toward high-engagement dishes; low-engagement dishes get 86'd. */
+   Deterministic for a given date + ratings; specials and section items rotate
+   daily and tilt toward high-engagement dishes; low-engagement dishes get 86'd.
+   'To Close' section is always full (safety net). */
 function menuFor(dateISO, ratings){
   ratings=ratings||{};
   function avg(id){ var e=ratings[id]; return (e&&e.n)? e.sum/e.n : null; }
+  function pickFrom(arry, rnd, minItems, maxItems){
+    var bag=arry.slice(), picks=[];
+    var upper = maxItems || Math.ceil(bag.length*0.65);
+    var K=Math.min(Math.max(Math.min(upper, bag.length), minItems||2), bag.length);
+    for (var k=0;k<K;k++){
+      var tot=bag.reduce(function(s,x){return s+(x.w||1)},0);
+      var r=rnd()*tot, acc=0, pick=bag[bag.length-1];
+      for (var i=0;i<bag.length;i++){ acc+= (bag[i].w||1); if (r<acc){ pick=bag[i]; break; } }
+      picks.push(pick.it||pick); bag.splice(bag.indexOf(pick),1);
+    }
+    return picks;
+  }
+  function varseed(dateISO, label, arry){
+    return dateISO+"|"+label+"|"+arry.map(function(x){return (x.it||x).id+":"+Math.round((avg((x.it||x).id)||0)*10)}).join(",");
+  }
   var weighted=[], eightySix=null;
   MENU.specials.forEach(function(it){
-    if (it.id==="trivia" && triviaTonight(dateISO).length===0) return; // only when a local pub is running one
+    if (it.id==="trivia" && triviaTonight(dateISO).length===0) return;
     var a=avg(it.id);
-    if (a!==null && a<2.5 && ratings[it.id].n>=2){ if(!eightySix) eightySix=it; return; } // 86'd
+    if (a!==null && a<2.5 && ratings[it.id].n>=2){ if(!eightySix) eightySix=it; return; }
     weighted.push({it:it, w:1+(a||0)*0.35});
   });
-  var seedStr=dateISO+"|"+weighted.map(function(x){return x.it.id+":"+Math.round((avg(x.it.id)||0)*10)}).join(",");
+  var seedStr=varseed(dateISO,"specials",weighted);
   var rnd=mulberry32(hashInt(seedStr));
-  var bag=weighted.slice(), picks=[];
-  var K=Math.min(2,bag.length);
-  for (var k=0;k<K;k++){
-    var tot=bag.reduce(function(s,x){return s+x.w},0);
-    var r=rnd()*tot, acc=0, pick=bag[bag.length-1];
-    for (var i=0;i<bag.length;i++){ acc+=bag[i].w; if (r<acc){ pick=bag[i]; break; } }
-    picks.push(pick.it); bag.splice(bag.indexOf(pick),1);
-  }
-  return { specials:picks, eightySix:eightySix, house:MENU.house, sections:MENU.sections, date:dateISO };
+  var specials=pickFrom(weighted, rnd, 2, 2);
+  // Rotate section items (same weighted mechanism), keep 'To Close' full
+  var rotated=MENU.sections.map(function(sec){
+    if (sec.id==="close") return sec;
+    var w=sec.items.map(function(it){ return {it:it, w:1+(avg(it.id)||0)*0.35}; });
+    var s=varseed(dateISO,"sec_"+sec.id,w);
+    var r=mulberry32(hashInt(s));
+    return {id:sec.id, title:sec.title, note:sec.note, items:pickFrom(w, r)};
+  });
+  return { specials:specials, eightySix:eightySix, house:MENU.house, sections:rotated, date:dateISO };
 }
 
 /* -------- storage -------- */
@@ -1340,7 +1357,7 @@ $("sc-log").onclick=function(){ logRitual("scaries"); };
 var menuGo=walk("menu-stage");
 var settleRatings={};
 function itemRow(it, note){
-  var row=document.createElement("div"); row.className="m-item";
+  var row=document.createElement("div"); row.className="m-item"; row.dataset.id=it.id;
   var line=document.createElement("div"); line.className="m-line";
   var name=document.createElement("span"); name.className="m-name"; name.textContent=it.name;
   var dots=document.createElement("span"); dots.className="m-dots";
