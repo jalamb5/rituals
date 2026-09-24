@@ -983,7 +983,7 @@ function menuFor(dateISO, ratings){
     var w=sec.items.map(function(it){ return {it:it, w:1+(avg(it.id)||0)*0.35}; });
     var s=varseed(dateISO,"sec_"+sec.id,w);
     var r=mulberry32(hashInt(s));
-    return {id:sec.id, title:sec.title, note:sec.note, items:pickFrom(w, r)};
+    return {id:sec.id, title:sec.title, note:sec.note, items:pickFrom(w, r, 2, 2)};
   });
   return { specials:specials, eightySix:eightySix, house:MENU.house, sections:rotated, date:dateISO };
 }
