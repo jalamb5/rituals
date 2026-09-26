@@ -206,6 +206,20 @@
   .receipt .r-dots{flex:1; border-bottom:1px dotted var(--line); transform:translateY(-3px)}
   .receipt .r-total{margin-top:8px; padding-top:8px; border-top:1px solid var(--line); display:flex; justify-content:space-between; font-weight:600}
   .receipt .r-foot{color:var(--dim); font-size:12.5px; font-style:italic; margin-top:8px; text-align:center}
+
+  /* ---- newspaper badge + view ---- */
+  .np-dot{display:inline-block; vertical-align:middle; margin-left:3px; font-size:10px; color:#f7768e; opacity:0; transition:opacity .3s ease}
+  .np-dot.on{opacity:1}
+  #np-items{margin-top:12px}
+  .np-item{padding:14px 0; border-bottom:1px solid var(--line); font-size:14.5px}
+  .np-item:last-child{border-bottom:0}
+  .np-person{font-weight:600; color:var(--text); margin-bottom:3px}
+  .np-title{color:var(--muted); display:block}
+  .np-link{color:var(--accent); text-decoration:none; font-size:13.5px}
+  .np-link:hover{text-decoration:underline}
+  .np-source{display:inline-block; font-size:11.5px; color:var(--dim); margin-left:8px}
+  .np-empty{color:var(--muted); font-style:italic}
+  .np-time{color:var(--dim); font-size:11.5px; margin-left:10px}
 </style>
 </head>
 <body>
@@ -220,6 +234,7 @@
     <button data-mode="menu">Menu</button>
     <button data-mode="shutdown">Shutdown</button>
     <button data-mode="settings">Settings</button>
+    <button data-mode="newspaper">📰<span class="np-dot" id="np-dot">●</span></button>
   </nav>
 </header>
 
@@ -604,6 +619,15 @@
         </div>
         <div class="status" id="set-status"></div>
       </div>
+    </div></div>
+  </section>
+
+  <!-- ======================= NEWSPAPER ======================= -->
+  <section class="view" id="v-newspaper">
+    <div class="panel on"><div class="inner">
+      <h2 class="title">📰 Newspaper</h2>
+      <p class="say">Updates from people you're watching.</p>
+      <div id="np-items"><p class="np-empty">Nothing yet — check back after Saturday.</p></div>
     </div></div>
   </section>
 
@@ -1189,13 +1213,14 @@ var $=function(id){return document.getElementById(id)};
 var els={
   daylabel:$("daylabel"), modenav:$("modenav"),
   rise:$("v-rise"), shutdown:$("v-shutdown"), menu:$("v-menu"),
-  settings:$("v-settings"), onboard:$("v-onboard"), scaries:$("v-scaries")
+  settings:$("v-settings"), onboard:$("v-onboard"), scaries:$("v-scaries"),
+  newspaper:$("v-newspaper")
 };
 var cfg=settings();
 var SPEECH_OK=false; try{ SPEECH_OK = "speechSynthesis" in window; }catch(e){}
 
 function show(id){
-  ["v-rise","v-menu","v-shutdown","v-settings","v-onboard","v-scaries","v-pending"].forEach(function(v){
+  ["v-rise","v-menu","v-shutdown","v-settings","v-onboard","v-scaries","v-pending","v-newspaper"].forEach(function(v){
     var el=document.getElementById(v); if(el) el.classList.toggle("active", v===id);
   });
 }
@@ -1207,7 +1232,7 @@ function themeFor(mode){
   return "rise";
 }
 function selectView(mode, push){
-  var map={rise:els.rise, menu:els.menu, shutdown:els.shutdown, settings:els.settings, scaries:els.scaries};
+  var map={rise:els.rise, menu:els.menu, shutdown:els.shutdown, settings:els.settings, scaries:els.scaries, newspaper:els.newspaper};
   if (mode==="onboard"){ show("v-onboard"); return; }
   if (!map[mode]) mode="rise"; // off → the daily front door
   show(map[mode].id);
@@ -1216,6 +1241,8 @@ function selectView(mode, push){
     b.classList.toggle("on", b.dataset.mode===mode);
   });
   if (push) document.body.dataset.pinned="1";
+  // Mark newspaper as read when viewed
+  if (mode==="newspaper"){ setState("newspaperReadAt", Date.now()); checkNewspaperDot(); loadNewspaperItems(); }
 }
 function tick(){
   var now=new Date();
@@ -1803,6 +1830,47 @@ function boot(){
     if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol))
       navigator.serviceWorker.register("./sw.js").catch(function(){});
   }catch(e){}
+  setTimeout(checkNewspaperDot, 200); // fetch after paint
+}
+function checkNewspaperDot(){
+  // Fetch newspaper data; show dot if there are newer items since last read
+  var dot=$("np-dot"); if(!dot) return;
+  var readAt=state().newspaperReadAt||0;
+  fetch("./data/newspaper.json").then(function(r){
+    if(!r.ok){ dot.classList.remove("on"); return; }
+    return r.json();
+  }).then(function(data){
+    if(!data || !data.updated){ dot.classList.remove("on"); return; }
+    var updated=new Date(data.updated).getTime();
+    if(updated > readAt){ dot.classList.add("on"); return; }
+    dot.classList.remove("on");
+  }).catch(function(){ dot.classList.remove("on"); });
+}
+function loadNewspaperItems(){
+  var el=$("np-items"); if(!el) return;
+  fetch("./data/newspaper.json").then(function(r){
+    if(!r.ok){ el.innerHTML='<p class="np-empty">Nothing yet — check back after Saturday.</p>'; return null; }
+    return r.json();
+  }).then(function(data){
+    if(!data || !data.items || !data.items.length){
+      el.innerHTML='<p class="np-empty">Nothing yet — check back after Saturday.</p>';
+      return;
+    }
+    var html='';
+    data.items.forEach(function(it){
+      var safeTitle=(it.title||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      var safePerson=(it.person||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      var safeSource=(it.source||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+      html+='<div class="np-item">'+
+        '<div class="np-person">'+safePerson+'</div>'+
+        '<a class="np-title" href="'+encodeURI(it.link)+'" target="_blank" rel="noopener">'+safeTitle+'</a>'+
+        '<span class="np-source">'+safeSource+'</span>'+
+        '</div>';
+    });
+    el.innerHTML=html;
+  }).catch(function(){
+    el.innerHTML='<p class="np-empty">Could not load — check back later.</p>';
+  });
 }
 function showPendingRescue(p){
   var labels={rise:"Rise", shutdown:"Shutdown", evening:"Evening check", scaries:"Don't Panic"};
