@@ -1,5 +1,5 @@
 /* Rituals service worker — offline shell so a ritual never dies with connectivity. */
-const CACHE = "rituals-v15";
+const CACHE = "rituals-v16";
 const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg"];
 
 self.addEventListener("install", (e) => {

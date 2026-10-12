@@ -126,8 +126,75 @@ save an old phrase over the real one when the Obsidian API key was entered, and
 the stale value then persisted. The app now always reads `PHRASES` constants and
 ignores any old saved values.
 
+## Health flags (Shutdown) + the check-in nudge (Rise) — added 2026-10-12
+
+Two additions that came out of the core-values summit and the tracking review.
+The vault brief is `Obsidian/Briefs/tracking-system-rebuild.md`; this is the
+reasoning behind the code.
+
+**The measurement that forced them.** The old vault system tracked ~18-20 inline
+fields per daily note through 2023-2025 (peaking at 35/day in April 2026), then
+collapsed to 1.6/day in July 2026 — the month the goal dataviews were dropped.
+Synthesis prompts had already died: "What can I add" was filled 12 times in 174
+weekly reviews, "Notable moments" 0 times in 2. The retrospective prompts
+survived (171/174). So: capture works when the tool carries it, and dies when the
+user has to remember it.
+
+**The rule both additions follow — a state gets no default.** The old
+`DailyNoteTemplate` shipped `🟢` as literal text on seven health markers, so an
+untouched marker and a good day were the same value: the instrument could only
+ever print "fine". Event counts may default to zero (`Alcohol:: 0` is a fact);
+states may not. That is why the chips are all-off and why nothing is written
+until something is tapped.
+
+### Health flags
+Six chips on Shutdown's closing panel: **Drink, Sleep, Screens, Fog, No contact,
+Meds.** Justin's own depression-indicator list had eleven; the merges are
+difficulty-sleeping + sleeping-late → Sleep, excessive-social-media + exceeded-
+app-limits → Screens, difficulty-focusing + stopped-reading → Fog, avoiding-
+interaction + not-wanting-narrative-TV → No contact. "Breaking streaks" was cut —
+the streak system it referred to is gone. The withdrawal chip is worded as
+behaviour ("No contact") not feeling, because solitude is a *value* for him and a
+chip that reads like an accusation gets tapped dishonestly.
+
+`Flagged::` is written **only when something fired**. The Shutdown section
+existing is the denominator (flags ÷ shutdowns), so the line is the event, not a
+daily constant — same rule as the Phrase:: cut.
+
+The vocabulary is hard-coded, like `PHRASES` (2026-09-14): the labels are the
+data, and a stale cached shell must not save an old set over a new one.
+
+### The check-in nudge
+Rise's front panel shows **one** person when they are due, and shows nothing
+otherwise. Rules, all deliberate:
+- **Due, never "overdue"** — no day counter, no red, no streak, nothing that
+  counts how late you are. A list of overdue names is a guilt interface.
+- **One name at a time** (the most overdue by their own ratio), and **never two
+  nudges on consecutive days** (`state.nudgeDay`, checked in `duePerson`).
+- **Being due is the app's job, not his memory.** The chips are visible for the
+  same reason.
+- Tapping records `checkins[name] = today` and writes `CheckIn:: @Name` into the
+  Rise block. "Not today" records the nudge day only and writes nothing.
+
+`data/people.json` holds name + cadence in days + an optional seed `lastContact`.
+People are **data, not vocabulary**, so they live outside `index.html` and can be
+edited in GitHub without touching code. The cadence lives there rather than in the
+vault for two reasons: a page on the public origin cannot read loopback (PNA), and
+same-device data belongs in the app's own state — the same rule as carryover.
+**Henry is excluded: household, not a check-in.** A missing `lastContact` starts
+the clock today so a fresh install never floods you.
+
+### What this is deliberately not
+Not a mood meter, not a trend chart, not a scoreboard. No view, no aggregation,
+no streaks — the output is a handful of inline fields the reviews can read, and
+the vault owns everything downstream (the agent drafts the weekly and monthly
+synthesis; see the brief). Adding a fifth top-level mode for either feature was
+rejected: both are one row inside a flow he already runs.
+
 ## Open questions / future options (not built yet)
 
+- Birthday reminders as a second check-in trigger (never a nag, already in the vault notes).
+- UK people — Sandra, Ellie, Pete, Rory — have no notes and no cadence; the loop is currently all long-distance.
 - Dedicated if-then "when will you do it" field for the one-thing step.
 - A weekly pattern view surfacing mood ↔ ritual-adherence trends (Bingo or a
   future Rituals view).

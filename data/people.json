@@ -1,0 +1,7 @@
+[
+  { "name": "Mom",            "every": 21,  "lastContact": null },
+  { "name": "Dad & Sherri",   "every": 21,  "lastContact": null },
+  { "name": "Alison & Luke",  "every": 56,  "lastContact": null },
+  { "name": "Brittany Worley","every": 56,  "lastContact": "2025-06-10" },
+  { "name": "Joe Martin",     "every": 182, "lastContact": null }
+]

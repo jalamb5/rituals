@@ -813,6 +813,189 @@ test("save-integrity: settle button shows honest pending state, not a false ✓"
   assert.equal(state.logged, undefined, "NOT marked logged — no false ✓");
 });
 
+/* ============ health flags + check-in nudge (added 2026-10-12) ============ */
+
+test("core: flagList keeps canonical order, dedupes, drops unknown ids", async (page) => {
+  const r = await page.evaluate(() => {
+    const c = window.RitualsCore;
+    return [c.flagList(["meds", "drink", "drink", "nonsense", null]),
+            c.flagList([]), c.flagList(null), c.flagLabels(["meds", "drink"])];
+  });
+  assert.deepEqual(r[0], ["drink", "meds"], "ordered by the FLAGS table, deduped, unknown dropped");
+  assert.deepEqual(r[1], []);
+  assert.deepEqual(r[2], []);
+  assert.deepEqual(r[3], ["Drink", "Meds"], "labels come from the chip vocabulary");
+});
+
+test("core: blockFor shutdown writes Flagged:: only when something fired", async (page) => {
+  const r = await page.evaluate(() => {
+    const c = window.RitualsCore;
+    const silent = c.blockFor("shutdown", { open: "a", wentRight: "b", carryover: [], mood: 3 });
+    const fired  = c.blockFor("shutdown", { open: "a", wentRight: "b", carryover: [], mood: 3, flags: ["sleep", "meds"] });
+    return [silent, fired];
+  });
+  // Absence must not read as "fine", so no default is emitted — but the
+  // Shutdown section existing is the denominator.
+  assert.doesNotMatch(r[0], /Flagged::/, "nothing tapped → no line at all");
+  assert.match(r[1], /Flagged:: Sleep, Meds/, "tapped chips reach the note in vocabulary order");
+});
+
+test("core: blockFor rise writes CheckIn:: only when a check-in was logged", async (page) => {
+  const r = await page.evaluate(() => {
+    const c = window.RitualsCore;
+    return [c.blockFor("rise", { head: "h", oneThing: "t", lookingForward: "f", mood: 2 }),
+            c.blockFor("rise", { head: "h", oneThing: "t", lookingForward: "f", mood: 2, checkin: "@Mom" })];
+  });
+  assert.doesNotMatch(r[0], /CheckIn::/, "no line on days nobody was contacted");
+  assert.match(r[1], /CheckIn:: @Mom/);
+  assert.match(r[1], /Mood:: 2/, "existing fields untouched");
+});
+
+test("core: duePerson — due past cadence, most overdue wins, quiet when fresh", async (page) => {
+  const r = await page.evaluate(() => {
+    const c = window.RitualsCore;
+    const P = [{ name: "Mom", every: 21 }, { name: "Joe", every: 182 }];
+    return {
+      fresh:    c.duePerson(P, { }, "2026-10-12", null),                                  // no history → clock starts today
+      oneDue:   c.duePerson(P, { Mom: "2026-09-01" }, "2026-10-12", null),                // 41d / 21d
+      notYet:   c.duePerson(P, { Mom: "2026-10-01" }, "2026-10-12", null),                // 11d / 21d
+      overdue:  c.duePerson(P, { Joe: "2026-01-01" }, "2026-10-12", null),                // 284d / 182d
+      seedWins: c.duePerson([{ name: "B", every: 56, lastContact: "2025-06-10" }], {}, "2026-10-12", null)
+    };
+  });
+  assert.equal(r.fresh, null, "a person with no history is not immediately due");
+  assert.equal(r.oneDue.name, "Mom");
+  assert.equal(r.notYet, null, "inside the cadence → silent");
+  assert.equal(r.overdue.name, "Joe", "seeded lastContact counts");
+  assert.equal(r.seedWins.name, "B", "lastContact in people.json seeds the clock");
+});
+
+test("core: duePerson — never two nudges on consecutive days", async (page) => {
+  const r = await page.evaluate(() => {
+    const c = window.RitualsCore;
+    const P = [{ name: "Mom", every: 21 }];
+    const cn = { Mom: "2026-09-01" };
+    return {
+      sameDay:  c.duePerson(P, cn, "2026-10-12", "2026-10-12"),
+      nextDay:  c.duePerson(P, cn, "2026-10-13", "2026-10-12"),
+      dayAfter: c.duePerson(P, cn, "2026-10-14", "2026-10-12")
+    };
+  });
+  assert.equal(r.sameDay, null, "one nudge a day at most");
+  assert.equal(r.nextDay, null, "the anti-nag rule: never two days running");
+  assert.equal(r.dayAfter.name, "Mom", "quiet again on the second day after");
+});
+
+test("ui: tapping a chip records it and it reaches the Shutdown block", async (page) => {
+  const r = await page.evaluate(() => {
+    const c = window.RitualsCore, t = c.iso(new Date());
+    c.renderFlags();
+    const chips = document.querySelectorAll("#sh-chips button");
+    document.querySelector('#sh-chips button[data-flag="sleep"]').click();
+    const afterOne = c.state()[t].flags;
+    document.querySelector('#sh-chips button[data-flag="sleep"]').click();
+    const afterOff = c.state()[t].flags;
+    document.querySelector('#sh-chips button[data-flag="meds"]').click();
+    const on = document.querySelector('#sh-chips button[data-flag="meds"]').className;
+    return { count: chips.length, labels: Array.from(chips).map(b => b.textContent),
+             afterOne, afterOff, on, block: c.blockFor("shutdown", { open: "", wentRight: "", carryover: [], flags: c.state()[t].flags }) };
+  });
+  assert.equal(r.count, 6, "six chips, all off by default");
+  assert.deepEqual(r.labels, ["Drink", "Sleep", "Screens", "Fog", "No contact", "Meds"]);
+  assert.deepEqual(r.afterOne, ["sleep"], "tap turns one on");
+  assert.deepEqual(r.afterOff, [], "tap again turns it off — nothing is written by default");
+  assert.match(r.on, /on/);
+  assert.match(r.block, /Flagged:: Meds/, "only what was tapped reaches the note");
+});
+
+test("ui: the check-in nudge shows one due name, and is silent otherwise", async (page) => {
+  const r = await page.evaluate(async () => {
+    const c = window.RitualsCore, t = c.iso(new Date());
+    await c.loadPeople();
+    const people = c.people().length;
+    // everyone contacted today → nothing due, panel must be empty
+    const fresh = {}; c.people().forEach(p => fresh[p.name] = t);
+    localStorage.setItem("rituals:state", JSON.stringify({ checkins: fresh }));
+    c.renderCheckin();
+    const silent = document.getElementById("rise-checkin").textContent;
+    // first run, no history: only the person with a seeded lastContact is due
+    localStorage.setItem("rituals:state", JSON.stringify({}));
+    c.renderCheckin();
+    const firstRun = document.getElementById("rise-checkin").textContent;
+    // Mom overdue → she is the one shown, by herself
+    localStorage.setItem("rituals:state", JSON.stringify({ checkins: { Mom: "2026-01-01" } }));
+    c.renderCheckin();
+    const shown = document.getElementById("rise-checkin").textContent;
+    document.querySelector("#rise-checkin .btn.primary").click();
+    const st = c.state(), d = st[t] || {};
+    return { people, silent, firstRun, shown, checkin: d.checkin, mom: (st.checkins || {}).Mom,
+             nudge: st.nudgeDay, text: document.getElementById("rise-checkin").textContent,
+             block: c.blockFor("rise", { head: "", oneThing: "", lookingForward: "", checkin: d.checkin }) };
+  });
+  assert.equal(r.people, 5, "five people, Henry excluded (household)");
+  assert.equal(r.silent.trim(), "", "quiet when nobody is due — no list, no nag");
+  assert.match(r.firstRun, /Brittany Worley is due a check-in/, "seed date makes her due on first run");
+  assert.equal((r.firstRun.match(/is due a check-in/g) || []).length, 1, "one name at a time, never a list");
+  assert.match(r.shown, /Mom is due a check-in/);
+  assert.equal((r.shown.match(/is due a check-in/g) || []).length, 1, "still one name when several are overdue");
+  assert.match(r.shown, /Reached out/);
+  assert.equal(r.checkin, "@Mom", "tapping records the contact for the day");
+  assert.notEqual(r.mom, undefined, "and resets that person's clock");
+  assert.notEqual(r.nudge, undefined, "the nudge day is recorded so tomorrow stays quiet");
+  assert.match(r.text, /Checked in with Mom today/);
+  assert.match(r.block, /CheckIn:: @Mom/);
+});
+
+test("ui: 'Not today' records the nudge day and clears the panel", async (page) => {
+  const r = await page.evaluate(async () => {
+    const c = window.RitualsCore, t = c.iso(new Date());
+    await c.loadPeople();
+    localStorage.setItem("rituals:state", JSON.stringify({ checkins: { Mom: "2026-01-01" } }));
+    c.renderCheckin();
+    const primary = document.querySelector("#rise-checkin .btn:not(.primary)");
+    primary.click();
+    return { nudge: c.state().nudgeDay, text: document.getElementById("rise-checkin").textContent,
+             tomorrow: c.duePerson(c.people(), { Mom: "2026-01-01" }, t, c.state().nudgeDay) };
+  });
+  assert.match(String(r.nudge), /^\d{4}-\d{2}-\d{2}$/, "the nudge day was recorded");
+  assert.equal(r.text.trim(), "", "panel clears without recording a contact");
+  assert.equal(r.tomorrow, null, "still suppressed on the day after a nudge");
+});
+
+test("ui: the chips and the nudge are visible in their flows, not just in the DOM", async (page) => {
+  await open(page, { onboarded: "1", vaultName: "Obsidian", folder: "Daily Notes", restBase: "https://127.0.0.1:27124", token: "" });
+  await page.click('nav.seg button[data-mode="shutdown"]');
+  await page.click("#sh-begin");
+  await page.click("#sh-open-next");
+  await page.click("#sh-right-next");
+  const sh = await page.evaluate(() => {
+    const chip = document.querySelector("#sh-chips button");
+    const panel = document.querySelector('#shutdown-flow .panel[data-step="3"]');
+    return { onPanel: panel.classList.contains("on"), count: document.querySelectorAll("#sh-chips button").length,
+             visible: !!chip && chip.offsetParent !== null };
+  });
+  assert.equal(sh.onPanel, true, "walking the flow lands on the closing panel");
+  assert.equal(sh.count, 6, "the chips render in the real flow, not only when called directly");
+  assert.equal(sh.visible, true, "and they are visible");
+
+  await page.evaluate(async () => {
+    const c = window.RitualsCore;
+    await c.loadPeople();
+    localStorage.setItem("rituals:state", JSON.stringify({ checkins: { Mom: "2026-01-01" } }));
+  });
+  await page.click('nav.seg button[data-mode="rise"]');
+  const ri = await page.evaluate(() => {
+    const c = window.RitualsCore;
+    c.renderCheckin();
+    const due = document.querySelector("#rise-checkin .due");
+    const btn = document.querySelector("#rise-checkin .btn.primary");
+    return { hasDue: !!due, visible: !!due && due.offsetParent !== null, label: btn ? btn.textContent : null };
+  });
+  assert.equal(ri.hasDue, true);
+  assert.equal(ri.visible, true, "the nudge is visible on Rise's front panel");
+  assert.equal(ri.label, "Reached out");
+});
+
 /* ---------- run ---------- */
 const PORT = 8734;
 await new Promise(res => server.listen(PORT, "127.0.0.1", res));

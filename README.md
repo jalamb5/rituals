@@ -18,9 +18,9 @@ Rituals deliberately does not read or write them — see DESIGN.md for why.
 
 | When | View | Job |
 |---|---|---|
-| Morning | Rise | brain-dump → one-thing → looking forward → opening phrase; surfaces yesterday's carryover |
+| Morning | Rise | brain-dump → one-thing → looking forward → opening phrase; surfaces yesterday's carryover, and **one check-in nudge when someone is due** |
 | Evening, any time | Menu | Dibbler's Eatery — the evening menu: choice not schedule, priced in ⚡, specials rotate and learn; orders gather on the night's check, settling rates and logs the evening block |
-| Bedtime | Shutdown | pure mental close — open loops (never tasks), what went right, carryover for tomorrow |
+| Bedtime | Shutdown | pure mental close — open loops (never tasks), what went right, carryover for tomorrow, and **tap any health flag that fired** |
 | Weekend | — | no scheduled ritual window; you get the front door and pick |
 
 ## How it writes (no competing notes)
@@ -46,8 +46,20 @@ InHead:: …
 OneThing:: …
 LookingForward:: …
 Mood:: 4
-Phrase:: "Open the day."
+CheckIn:: @Mom          # only on days a check-in was logged
+
+## Shutdown
+
+OpenLoop:: …
+WentRight:: …
+Carryover:: …
+Mood:: 3
+Flagged:: Sleep, Meds   # only the chips you tapped; nothing tapped → no line
 ```
+
+Nothing is written by default. A blank flag line never appears, so an untouched
+state can't be mistaken for a good one — the `## Shutdown` section existing is
+what tells you the ritual ran.
 
 ## Run it
 
@@ -82,6 +94,7 @@ shell forever.
 
 - `index.html` — single-file app (vanilla, no build)
 - `manifest.webmanifest`, `sw.js`, `icon.svg`, `CNAME` — PWA shell
+- `data/people.json` — who gets a check-in nudge, and how often (edit here, not in code)
 - `scripts/open-rituals.command` — local-first launcher
 - `test/run.mjs` — Playwright-core suite (pure-function + DOM)
 - `DESIGN.md` — the evidence and decision record (read this before changing behaviour)
