@@ -1104,8 +1104,11 @@ function duePerson(people, checkins, todayISO, lastNudgeISO){
   (people||[]).forEach(function(p){
     var every=+p.every||0;
     if (!every || !p.name) return;
-    var last=(checkins||{})[p.name] || p.lastContact || todayISO;
-    var d=daysBetween(last, todayISO);
+    // No recorded contact is NOT the same as "contacted today". The old
+    // `|| todayISO` fallback made an unknown clock read as 0 days, so anyone
+    // with lastContact:null could never come due — four of five people.
+    var last=(checkins||{})[p.name] || p.lastContact;
+    var d = last ? daysBetween(last, todayISO) : every;
     if (d===null || d<0) return;
     var ratio=d/every;
     if (ratio>=1 && ratio>bestRatio){ bestRatio=ratio; best=p; }
