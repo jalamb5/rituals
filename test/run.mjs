@@ -13,7 +13,8 @@ import assert from "node:assert/strict";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const MIME = { ".html": "text/html", ".js": "text/javascript", ".svg": "image/svg+xml",
-  ".webmanifest": "application/manifest+json", ".json": "application/json", ".css": "text/css", ".md": "text/markdown" };
+  ".webmanifest": "application/manifest+json", ".json": "application/json", ".css": "text/css",
+  ".md": "text/markdown", ".wav": "audio/wav" };
 
 function findChrome() {
   if (process.env.RITUALS_CHROME) return process.env.RITUALS_CHROME;
@@ -309,6 +310,37 @@ test("core: phrases are hard-coded constants; no phrase fields remain in setting
   });
   assert.deepEqual([d.rise, d.shutdown, d.scaries], ["Fabricati diem.", "All's well.", "CATS ARE NICE."]);
   assert.equal(d.hasPhraseField, false);
+});
+test("audio: every phrase has a pre-rendered file that decodes and ends on a zero crossing", async (page) => {
+  // The phrases are played through Web Audio, not speechSynthesis (Gecko's
+  // speech engine clicks at the end of every utterance). A missing or
+  // silenced file would fall back to the synth and bring the click back, so
+  // the assets are part of the contract, not an optional nicety.
+  const d = await page.evaluate(async () => {
+    const c = window.RitualsCore;
+    const keys = Object.keys(c.PHRASES);
+    const out = { keys, mapped: Object.keys(c.AUDIO), files: {} };
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    for (const k of keys) {
+      const r = await fetch(c.AUDIO[k]);
+      const buf = await ctx.decodeAudioData(await r.arrayBuffer());
+      const s = buf.getChannelData(0);
+      let peak = 0;
+      for (let i = 0; i < s.length; i++) peak = Math.max(peak, Math.abs(s[i]));
+      out.files[k] = { status: r.status, dur: +buf.duration.toFixed(3),
+                       last: Math.abs(s[s.length - 1]), peak };
+    }
+    ctx.close();
+    return out;
+  });
+  assert.deepEqual(d.mapped.slice().sort(), d.keys.slice().sort(), "every phrase has an audio file mapped");
+  for (const k of d.keys) {
+    const f = d.files[k];
+    assert.equal(f.status, 200, `${k}: the audio file serves`);
+    assert.ok(f.dur > 0.4, `${k}: decodes to real audio (got ${f.dur}s)`);
+    assert.ok(f.peak > 0.05, `${k}: has actual signal`);
+    assert.ok(f.last < 0.01, `${k}: ends on a zero crossing (got ${f.last.toFixed(4)}) — a hard cut clicks`);
+  }
 });
 test("dom: stale saved phrase from the editable era is ignored (regression: cached-shell bug)", async (page) => {
   // Simulate a user whose localStorage still holds old phrase values from a cached shell
@@ -858,12 +890,13 @@ test("core: duePerson — due past cadence, most overdue wins, quiet when fresh"
     return {
       fresh:    c.duePerson(P, { }, "2026-10-12", null),                                  // no history → clock starts today
       oneDue:   c.duePerson(P, { Mom: "2026-09-01" }, "2026-10-12", null),                // 41d / 21d
-      notYet:   c.duePerson(P, { Mom: "2026-10-01" }, "2026-10-12", null),                // 11d / 21d
+      notYet:   c.duePerson(P, { Mom: "2026-10-01", Joe: "2026-10-12" }, "2026-10-12", null), // 11d/21d, 0d/182d
       overdue:  c.duePerson(P, { Joe: "2026-01-01" }, "2026-10-12", null),                // 284d / 182d
       seedWins: c.duePerson([{ name: "B", every: 56, lastContact: "2025-06-10" }], {}, "2026-10-12", null)
     };
   });
-  assert.equal(r.fresh, null, "a person with no history is not immediately due");
+  assert.equal(r.fresh.name, "Mom", "no history → the clock starts today, so a fresh name is due");
+  assert.equal(r.fresh.every, 21, "the fresh entry is the 21-day one, not the 182-day one");
   assert.equal(r.oneDue.name, "Mom");
   assert.equal(r.notYet, null, "inside the cadence → silent");
   assert.equal(r.overdue.name, "Joe", "seeded lastContact counts");

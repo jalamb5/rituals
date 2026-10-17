@@ -126,6 +126,40 @@ save an old phrase over the real one when the Obsidian API key was entered, and
 the stale value then persisted. The app now always reads `PHRASES` constants and
 ignores any old saved values.
 
+**Phrases are pre-rendered audio, not speech synthesis (2026-10-17).** The
+phrases are spoken by playing a shipped WAV through Web Audio rather than by
+calling `speechSynthesis`. Reason: Zen — a Gecko browser, and the one the app is
+actually used in — puts an audible click on the speakers at the end of every
+utterance. Diagnostic probe, in Zen, same phrase each time:
+
+| how it was played | result |
+|---|---|
+| `speechSynthesis`, exactly as the app called it | click |
+| `speechSynthesis` + a silent Web Audio stream held open | click |
+| `speechSynthesis` with the `rate = 0.95` override removed | click |
+| the same audio pre-rendered, played via Web Audio | clean |
+| a bare 300 ms tone stopped dead | clean |
+
+The last row is the one that matters: a Web Audio stream that stops dead is
+silent, so this is not generic audio-teardown — it is specific to the speech
+engine. Since every Web Audio path was clean, the fix is to stop asking the
+engine to talk. The macOS `say` command and Gecko's engine share nothing, and
+Terminal `say` was clean throughout, which is what ruled the OS out first.
+
+`PHRASES` still drives the on-screen text and the daily-note blocks; `AUDIO` maps
+each phrase to the file that is actually heard. **Editing a phrase string alone no
+longer changes what you hear — the two must change together.** Re-bake with:
+
+```sh
+say -o x.aiff "New phrase." && afconvert -f WAVE -d LEI16@22050 -c 1 x.aiff audio/<name>.wav
+```
+
+22.05 kHz mono 16-bit is the synthesiser's own native rate (150 KB for all
+three), and the tail must stay silent — `test/run.mjs` asserts every file ends on
+a zero crossing, because a hard cut is exactly the click being fixed.
+`speechSynthesis` survives as a fallback for the case where a file or the audio
+decoder is unavailable; it works everywhere, it just clicks at the end.
+
 ## Health flags (Shutdown) + the check-in nudge (Rise) — added 2026-10-12
 
 Two additions that came out of the core-values summit and the tracking review.

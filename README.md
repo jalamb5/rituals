@@ -95,6 +95,7 @@ shell forever.
 - `index.html` — single-file app (vanilla, no build)
 - `manifest.webmanifest`, `sw.js`, `icon.svg`, `CNAME` — PWA shell
 - `data/people.json` — who gets a check-in nudge, and how often (edit here, not in code)
+- `audio/*.wav` — the three spoken phrases, pre-rendered (played via Web Audio, not the speech engine — see DESIGN.md for why and for the re-bake command)
 - `scripts/open-rituals.command` — local-first launcher
 - `test/run.mjs` — Playwright-core suite (pure-function + DOM)
 - `DESIGN.md` — the evidence and decision record (read this before changing behaviour)

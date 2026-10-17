@@ -1,6 +1,7 @@
 /* Rituals service worker — offline shell so a ritual never dies with connectivity. */
-const CACHE = "rituals-v16";
-const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg"];
+const CACHE = "rituals-v17";
+const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icon.svg",
+                "./audio/rise.wav", "./audio/shutdown.wav", "./audio/cats.wav"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));

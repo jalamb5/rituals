@@ -1051,8 +1051,23 @@ var DEFAULTS={
 /* The three spoken phrases are hard-coded (decided with the principal
    2026-09-12; no longer editable in Settings). The app ALWAYS reads these
    constants — stale saved copies from the editable era are ignored, which
-   fixes the saved-old-phrase bug that a cached shell could cause. */
+   fixes the saved-old-phrase bug that a cached shell could cause.
+
+   Pre-rendered audio (2026-10-17): the phrases now SHIP as audio files and are
+   played through Web Audio, not through speechSynthesis. Zen/Gecko's speech
+   engine puts an audible click on the speaker at the end of every utterance
+   (measured: the identical audio played through Web Audio is clean, and so is a
+   bare tone that stops dead, so it is the speech engine specifically). The
+   PHRASES strings still drive the on-screen text and the daily-note blocks;
+   AUDIO maps each one to the file that is actually heard. Re-baking a phrase:
+
+     say -o x.aiff "New phrase." && afconvert -f WAVE -d LEI16@22050 -c 1 x.aiff audio/<name>.wav
+
+   Editing a PHRASES string alone no longer changes what you HEAR — the two must
+   be changed together. speechSynthesis remains the fallback if a file or the
+   decoder is unavailable (it works everywhere, it just clicks at the end). */
 var PHRASES={rise:"Fabricati diem.", shutdown:"All's well.", scaries:"CATS ARE NICE."};
+var AUDIO={rise:"./audio/rise.wav", shutdown:"./audio/shutdown.wav", scaries:"./audio/cats.wav"};
 
 /* ---- health flags, logged at Shutdown (added 2026-10-12) ----------------
    Tapping is the input. The chips are visible on screen, so nothing has to be
@@ -1358,9 +1373,29 @@ function tick(){
   });
   if (!document.body.dataset.pinned) selectView(active, false);
 }
-function say(text){
-  if (!SPEECH_OK) return;
+var actx=null, abufs={};
+function speakPhrase(text){
+  /* Fallback only — reached when the pre-rendered file or decoder is missing. */
+  if (!SPEECH_OK || !text) return;
   try{ var u=new SpeechSynthesisUtterance(text); u.rate=.95; speechSynthesis.cancel(); speechSynthesis.speak(u); }catch(e){}
+}
+function startBuf(b){
+  try{ var s=actx.createBufferSource(); s.buffer=b; s.connect(actx.destination); s.start(); }catch(e){}
+}
+function say(kind){
+  var text=PHRASES[kind]||"", url=AUDIO[kind];
+  if (!url) { speakPhrase(text); return; }
+  try{
+    var AC=window.AudioContext||window.webkitAudioContext;
+    if (!AC) { speakPhrase(text); return; }
+    if (!actx) actx=new AC();
+    if (actx.state==="suspended") actx.resume();
+    if (abufs[url]) { startBuf(abufs[url]); return; }
+    fetch(url).then(function(r){ return r.arrayBuffer(); })
+              .then(function(ab){ return actx.decodeAudioData(ab); })
+              .then(function(b){ abufs[url]=b; startBuf(b); })
+              .catch(function(){ speakPhrase(text); });
+  }catch(e){ speakPhrase(text); }
 }
 
 /* ---- panel walk-through helper (matches the original go()) ---- */
@@ -1474,7 +1509,7 @@ $("rise-thing-back").onclick=function(){ riseGo(2); };
 $("rise-thing-next").onclick=function(){ setToday("oneThing",$("rise-thing").value); riseGo(4); };
 $("rise-forward-back").onclick=function(){ riseGo(3); };
 $("rise-forward-next").onclick=function(){ setToday("lookingForward",$("rise-forward").value); riseGo(5); };
-$("rise-said").onclick=function(){ say(PHRASES.rise); };
+$("rise-said").onclick=function(){ say("rise"); };
 $("rise-rerun").onclick=function(){ riseStartFlow(); };
 $("rise-log").onclick=function(){ logRitual("rise"); };
 Array.prototype.forEach.call(document.querySelectorAll("#rs-mood button"),function(b){
@@ -1508,7 +1543,7 @@ $("sh-right-next").onclick=function(){
   setToday("carryover",carry);
   shutdownGo(3);
 };
-$("sh-said").onclick=function(){ say(PHRASES.shutdown); };
+$("sh-said").onclick=function(){ say("shutdown"); };
 $("shutdown-rerun").onclick=function(){ shutdownStart(); };
 $("sh-log").onclick=function(){ logRitual("shutdown"); };
 Array.prototype.forEach.call(document.querySelectorAll("#sh-mood button"),function(b){
@@ -1537,7 +1572,7 @@ $("sc-first-back").onclick=function(){ scariesGo(2); };
 $("sc-first-next").onclick=function(){ setToday("scFirst",$("sc-first").value); scariesGo(4); };
 $("sc-park-back").onclick=function(){ scariesGo(3); };
 $("sc-park-next").onclick=function(){ setToday("scPark",$("sc-park").value); scariesGo(5); };
-$("sc-said").onclick=function(){ say(PHRASES.scaries); };
+$("sc-said").onclick=function(){ say("scaries"); };
 $("sc-rerun").onclick=function(){ scariesStart(); };
 $("sc-log").onclick=function(){ logRitual("scaries"); };
 
@@ -2063,6 +2098,7 @@ window.RitualsCore={modeFor:modeFor,dailyNotePath:dailyNotePath,blockFor:blockFo
   parseOpenLoops:parseOpenLoops,iso:iso,minutes:minutes,settings:settings,store:store,
   MENU:MENU,menuFor:menuFor,hashInt:hashInt,menuRatings:menuRatings,recordRating:recordRating,addEveningOrder:addEveningOrder,removeEveningOrder:removeEveningOrder,
   PHRASES:PHRASES,
+  AUDIO:AUDIO,
   chefNoteFor:chefNoteFor,dishById:dishById,CHEF_NOTES:CHEF_NOTES,renderReceipt:renderReceipt,
   TRIVIA_VENUES:TRIVIA_VENUES,triviaTonight:triviaTonight,
   offmenuLog:offmenuLog,logOffmenuOrder:logOffmenuOrder,offmenuPatterns:offmenuPatterns,
