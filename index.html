@@ -1380,7 +1380,10 @@ function speakPhrase(text){
   try{ var u=new SpeechSynthesisUtterance(text); u.rate=.95; speechSynthesis.cancel(); speechSynthesis.speak(u); }catch(e){}
 }
 function startBuf(b){
-  try{ var s=actx.createBufferSource(); s.buffer=b; s.connect(actx.destination); s.start(); }catch(e){}
+  try{
+    if (actx && actx.state==="suspended") { actx.resume().then(function(){ startBuf(b); }); return; }
+    var s=actx.createBufferSource(); s.buffer=b; s.connect(actx.destination); s.start();
+  }catch(e){}
 }
 function say(kind){
   var text=PHRASES[kind]||"", url=AUDIO[kind];
